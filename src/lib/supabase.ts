@@ -278,7 +278,7 @@ export const orderService = {
       // Degraded in-memory fallback object
       const fallbackOrder: Order = {
         id: `ord-${Date.now()}`,
-        orderNumber: `EG-${year}-${String(Math.floor(Math.random() * 900) + 100)}`,
+        orderNumber: `MF-${year}-${String(Math.floor(Math.random() * 900) + 100)}`,
         orderDate: newOrderData.orderDate || now.toISOString().split('T')[0],
         deadline: newOrderData.deadline,
         buyerName: newOrderData.buyerName,
@@ -304,14 +304,41 @@ export const orderService = {
       return fallbackOrder;
     }
 
-    // Determine next order number and queue order
-    const { count } = await supabase
+    // Determine next unique order number (max sequence + 1) and queue order
+    const { data: existingOrders } = await supabase
       .from('orders')
-      .select('*', { count: 'exact', head: true });
+      .select('order_number, queue_order');
 
-    const orderIndex = (count || 0) + 1;
-    const orderNumber = `EG-${year}-${String(orderIndex).padStart(3, '0')}`;
-    const queueOrder = orderIndex;
+    let maxSeq = 0;
+    let maxQueue = 0;
+    const existingNumbers = new Set<string>();
+
+    (existingOrders || []).forEach(
+      (row: { order_number?: string; queue_order?: number }) => {
+        if (row.order_number) {
+          existingNumbers.add(row.order_number);
+          const match = row.order_number.match(/(\d+)$/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (!isNaN(num) && num > maxSeq) {
+              maxSeq = num;
+            }
+          }
+        }
+        const q = Number(row.queue_order) || 0;
+        if (q > maxQueue) {
+          maxQueue = q;
+        }
+      }
+    );
+
+    let nextSeq = maxSeq + 1;
+    let orderNumber = `MF-${year}-${String(nextSeq).padStart(3, '0')}`;
+    while (existingNumbers.has(orderNumber)) {
+      nextSeq++;
+      orderNumber = `MF-${year}-${String(nextSeq).padStart(3, '0')}`;
+    }
+    const queueOrder = maxQueue + 1;
 
     const dbPayload = {
       order_number: orderNumber,
