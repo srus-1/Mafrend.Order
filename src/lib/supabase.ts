@@ -22,7 +22,10 @@ export interface SupabaseConfigStatus {
 
 export function getSupabaseConfigStatus(): SupabaseConfigStatus {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  const key = (
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  )?.trim();
 
   if (!url || !key) {
     return {
@@ -82,7 +85,10 @@ export const isSupabaseConfigured = getSupabaseConfigStatus().isConfigured;
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!.trim()
+      (
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+      )!.trim()
     )
   : null;
 
