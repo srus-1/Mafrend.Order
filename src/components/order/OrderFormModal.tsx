@@ -88,12 +88,12 @@ function OrderFormContent({
   // Select whole number on focus so typing replaces the default 0
   const selectOnFocus = (e: React.FocusEvent<HTMLInputElement>) => e.target.select();
 
-  // Strip leading zeros directly on the DOM element and update numeric state
+  // Strip non-digits and leading zeros so leading '0' can never stick in any field
   const handleNumericChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     setter: React.Dispatch<React.SetStateAction<number>>
   ) => {
-    const cleaned = e.target.value.replace(/^0+/, '');
+    const cleaned = e.target.value.replace(/\D/g, '').replace(/^0+/, '');
     if (e.target.value !== cleaned) {
       e.target.value = cleaned;
     }
@@ -285,11 +285,10 @@ function OrderFormContent({
                   Kuantitas (Pcs)
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
-                  min="1"
                   placeholder="0"
-                  value={qty || ''}
+                  value={qty > 0 ? String(qty) : ''}
                   onFocus={selectOnFocus}
                   onChange={(e) => handleNumericChange(e, setQty)}
                   className="w-full px-3 py-2 text-sm font-semibold bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] focus:ring-1 focus:ring-[#5645d4]"
@@ -301,12 +300,10 @@ function OrderFormContent({
                   Harga Satuan (Rp)
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
-                  min="0"
-                  step="100"
                   placeholder="0"
-                  value={pricePerPcs || ''}
+                  value={pricePerPcs > 0 ? String(pricePerPcs) : ''}
                   onFocus={selectOnFocus}
                   onChange={(e) => handleNumericChange(e, setPricePerPcs)}
                   className="w-full px-3 py-2 text-sm font-semibold bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] focus:ring-1 focus:ring-[#5645d4]"
@@ -339,12 +336,10 @@ function OrderFormContent({
                   Bahan Baku
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
-                  min="0"
-                  step="50"
                   placeholder="0"
-                  value={bahanBaku || ''}
+                  value={bahanBaku > 0 ? String(bahanBaku) : ''}
                   onFocus={selectOnFocus}
                   onChange={(e) => handleNumericChange(e, setBahanBaku)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
@@ -356,12 +351,10 @@ function OrderFormContent({
                   Tinta Sablon
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
-                  min="0"
-                  step="50"
                   placeholder="0"
-                  value={tintaSablon || ''}
+                  value={tintaSablon > 0 ? String(tintaSablon) : ''}
                   onFocus={selectOnFocus}
                   onChange={(e) => handleNumericChange(e, setTintaSablon)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
@@ -373,12 +366,10 @@ function OrderFormContent({
                   Tenaga Kerja
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
-                  min="0"
-                  step="50"
                   placeholder="0"
-                  value={tenagaKerja || ''}
+                  value={tenagaKerja > 0 ? String(tenagaKerja) : ''}
                   onFocus={selectOnFocus}
                   onChange={(e) => handleNumericChange(e, setTenagaKerja)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
@@ -390,12 +381,10 @@ function OrderFormContent({
                   Kemasan
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
-                  min="0"
-                  step="50"
                   placeholder="0"
-                  value={kemasan || ''}
+                  value={kemasan > 0 ? String(kemasan) : ''}
                   onFocus={selectOnFocus}
                   onChange={(e) => handleNumericChange(e, setKemasan)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
@@ -407,12 +396,10 @@ function OrderFormContent({
                   Overhead
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
-                  min="0"
-                  step="50"
                   placeholder="0"
-                  value={overhead || ''}
+                  value={overhead > 0 ? String(overhead) : ''}
                   onFocus={selectOnFocus}
                   onChange={(e) => handleNumericChange(e, setOverhead)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
@@ -490,12 +477,10 @@ function OrderFormContent({
                     Nominal DP (Rp)
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     inputMode="numeric"
-                    min="0"
-                    step="50000"
                     placeholder="0"
-                    value={dpAmount || ''}
+                    value={dpAmount > 0 ? String(dpAmount) : ''}
                     onFocus={selectOnFocus}
                     onChange={(e) => handleNumericChange(e, setDpAmount)}
                     className="w-full px-3 py-2 text-sm font-semibold bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
