@@ -11,6 +11,7 @@ import {
   TrendingUp,
   TrendingDown,
   ChevronDown,
+  Package,
 } from 'lucide-react';
 import { Order, PaymentStatus, ProcessStatus } from '@/types/order';
 import { formatRp, formatDateShort } from '@/lib/utils';
@@ -21,6 +22,8 @@ interface OrderRowCardProps {
   index: number;
   isDragging?: boolean;
   dragHandleProps?: Record<string, unknown>;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
 function OrderRowCardComponent({
@@ -28,13 +31,31 @@ function OrderRowCardComponent({
   index,
   isDragging = false,
   dragHandleProps,
+  isSelected: propIsSelected,
+  onToggleSelect,
 }: OrderRowCardProps) {
   const {
     openEditModal,
     deleteOrder,
     setActiveDrawerOrder,
     updateOrder,
+    selectedOrderIds = [],
+    toggleSelectOrder,
   } = useOrders();
+
+  const isSelected =
+    propIsSelected !== undefined
+      ? propIsSelected
+      : selectedOrderIds.includes(order.id);
+
+  const handleToggleSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    if (onToggleSelect) {
+      onToggleSelect(order.id);
+    } else if (toggleSelectOrder) {
+      toggleSelectOrder(order.id);
+    }
+  };
 
   const handlePaymentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value as PaymentStatus;
@@ -97,18 +118,33 @@ function OrderRowCardComponent({
   const currentProcess = processBadgeStyles[order.processStatus] || processBadgeStyles.ANTREAN;
   const currentPayment = paymentBadgeStyles[order.paymentStatus] || paymentBadgeStyles.BELUM_LUNAS;
 
+  const hasSpecs = Boolean(order.specs && order.specs.trim());
+  const hasNotes = Boolean(order.notes && order.notes.trim());
+
   return (
     <div
-      className={`group relative bg-white border rounded-xl ${
+      className={`group relative rounded-xl border transition-all ${
+        isSelected
+          ? 'border-[#5645d4] ring-1 ring-[#5645d4]/40 bg-[#fcfbfe]'
+          : 'bg-white border-[#d6d3cd]'
+      } ${
         isDragging
           ? 'order-row-active scale-[1.01] z-30'
-          : 'animate-fade-in-up card-bounce border-[#d6d3cd] hover:border-[#5645d4]/50'
+          : 'animate-fade-in-up card-bounce hover:border-[#5645d4]/50'
       }`}
     >
       <div className="p-4 sm:p-5 flex flex-col gap-3.5 sm:gap-4">
         {/* Header: queue + order number + deadline | actions */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 shrink-0">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={handleToggleSelect}
+              onClick={(e) => e.stopPropagation()}
+              className="w-4 h-4 rounded border-[#c8c4be] text-[#5645d4] accent-[#5645d4] focus:ring-[#5645d4] cursor-pointer"
+              aria-label={`Pilih pesanan ${order.orderNumber}`}
+            />
             <button
               {...dragHandleProps}
               className="p-2 -m-1 rounded-md text-[#787671] hover:text-[#1a1a1a] hover:bg-[#f6f5f4] cursor-grab active:cursor-grabbing transition-colors touch-none min-w-[36px] min-h-[36px] flex items-center justify-center"
@@ -154,78 +190,147 @@ function OrderRowCardComponent({
           </div>
         </div>
 
-        {/* Buyer & Product */}
-        <div className="flex flex-col gap-1.5 pl-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h4 className="font-semibold text-[#1a1a1a] text-base truncate max-w-full sm:max-w-[280px]" title={order.buyerName}>
-              {order.buyerName}
-            </h4>
-            <a
-              href={waUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#d9f3e1] text-[11px] font-medium text-[#0d5220] hover:bg-[#c6ecd2] transition-colors shrink-0"
-            >
-              <MessageCircle className="w-3 h-3" />
-              <span>{order.buyerPhone}</span>
-            </a>
-          </div>
-          <p className="text-sm font-medium text-[#37352f] truncate" title={order.productName}>
-            {order.productName}
-          </p>
-          {order.specs && (
-            <p className="text-xs text-[#787671] truncate" title={order.specs}>
-              {order.specs}
-            </p>
-          )}
-        </div>
+        {/* 2-Column Responsive Body Layout (Desktop/Tablet: 7/5 Grid, Mobile: Stacking) */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 sm:gap-4 items-stretch min-w-0">
+          {/* Left Column: Buyer Info + 2x2 Stats Tiles (md:col-span-7) */}
+          <div className="md:col-span-7 flex flex-col justify-between gap-3 min-w-0">
+            {/* Buyer Name & WhatsApp Contact Pill */}
+            <div className="flex flex-wrap items-center gap-2 pl-0.5">
+              <h4
+                className="font-semibold text-[#1a1a1a] text-sm sm:text-base truncate max-w-full sm:max-w-[260px]"
+                title={order.buyerName}
+              >
+                {order.buyerName}
+              </h4>
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#d9f3e1] text-[11px] font-medium text-[#0d5220] hover:bg-[#c6ecd2] transition-colors shrink-0 min-h-[32px] sm:min-h-[28px]"
+                title={`Kirim pesan WhatsApp ke ${order.buyerPhone}`}
+              >
+                <MessageCircle className="w-3 h-3" />
+                <span>{order.buyerPhone}</span>
+              </a>
+            </div>
 
-        {/* Stats tiles */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-          <div className="rounded-lg bg-[#f6f5f4] border border-[#e5e3df] shadow-notion-xs px-3 py-2.5">
-            <p className="text-[11px] text-[#787671]">Jumlah</p>
-            <p className="text-sm font-bold text-[#1a1a1a] mt-0.5">
-              {order.qty.toLocaleString('id-ID')} <span className="text-xs font-medium text-[#5d5b54]">pcs</span>
-            </p>
-            <p className="text-[11px] text-[#787671] mt-0.5">@{formatRp(order.pricePerPcs)}</p>
+            {/* 4 Stats Tiles configured as a compact 2x2 Grid */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+              {/* Jumlah */}
+              <div className="rounded-lg bg-[#f6f5f4] border border-[#e5e3df] shadow-notion-xs px-3 py-2 min-w-0">
+                <p className="text-[11px] text-[#5d5b54]">Jumlah</p>
+                <p className="text-sm font-bold text-[#1a1a1a] mt-0.5 truncate">
+                  {order.qty.toLocaleString('id-ID')}{' '}
+                  <span className="text-xs font-medium text-[#5d5b54]">pcs</span>
+                </p>
+                <p className="text-[11px] text-[#5d5b54] mt-0.5 truncate">
+                  @{formatRp(order.pricePerPcs)}
+                </p>
+              </div>
+
+              {/* Omzet */}
+              <div className="rounded-lg bg-[#f6f5f4] border border-[#e5e3df] shadow-notion-xs px-3 py-2 min-w-0">
+                <p className="text-[11px] text-[#5d5b54]">Omzet</p>
+                <p className="text-sm font-bold text-[#1a1a1a] mt-0.5 truncate">
+                  {formatRp(order.omzet)}
+                </p>
+              </div>
+
+              {/* HPP */}
+              <div className="rounded-lg bg-[#f6f5f4] border border-[#e5e3df] shadow-notion-xs px-3 py-2 min-w-0">
+                <p className="text-[11px] text-[#5d5b54]">HPP</p>
+                <p className="text-sm font-semibold text-[#37352f] mt-0.5 truncate">
+                  {formatRp(order.hppBreakdown.totalHpp)}
+                </p>
+              </div>
+
+              {/* Laba / Margin */}
+              <div
+                className={`rounded-lg border shadow-notion-xs px-3 py-2 min-w-0 ${
+                  isNegativeMargin
+                    ? 'bg-[#fde0ec] border-[#7a1c4b]/20'
+                    : 'bg-[#d9f3e1] border-[#0d5220]/20'
+                }`}
+              >
+                <p
+                  className={`text-[11px] flex items-center gap-1 truncate ${
+                    isNegativeMargin ? 'text-[#7a1c4b]' : 'text-[#0d5220]'
+                  }`}
+                >
+                  {isNegativeMargin ? (
+                    <TrendingDown className="w-3 h-3 shrink-0" />
+                  ) : (
+                    <TrendingUp className="w-3 h-3 shrink-0" />
+                  )}
+                  <span>Laba · {order.marginPct}%</span>
+                </p>
+                <p
+                  className={`text-sm font-bold mt-0.5 truncate ${
+                    isNegativeMargin ? 'text-[#7a1c4b]' : 'text-[#0d5220]'
+                  }`}
+                >
+                  {formatRp(order.profit)}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="rounded-lg bg-[#f6f5f4] border border-[#e5e3df] shadow-notion-xs px-3 py-2.5">
-            <p className="text-[11px] text-[#787671]">Omzet</p>
-            <p className="text-sm font-bold text-[#1a1a1a] mt-0.5">{formatRp(order.omzet)}</p>
-          </div>
-          <div className="rounded-lg bg-[#f6f5f4] border border-[#e5e3df] shadow-notion-xs px-3 py-2.5">
-            <p className="text-[11px] text-[#787671]">HPP</p>
-            <p className="text-sm font-semibold text-[#37352f] mt-0.5">{formatRp(order.hppBreakdown.totalHpp)}</p>
-          </div>
-          <div className={`rounded-lg border shadow-notion-xs px-3 py-2.5 ${isNegativeMargin ? 'bg-[#fde0ec] border-[#7a1c4b]/20' : 'bg-[#d9f3e1] border-[#0d5220]/20'}`}>
-            <p className={`text-[11px] flex items-center gap-1 ${isNegativeMargin ? 'text-[#7a1c4b]' : 'text-[#0d5220]'}`}>
-              {isNegativeMargin ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
-              Laba · {order.marginPct}%
-            </p>
-            <p className={`text-sm font-bold mt-0.5 ${isNegativeMargin ? 'text-[#7a1c4b]' : 'text-[#0d5220]'}`}>
-              {formatRp(order.profit)}
-            </p>
+
+          {/* Right Column: Dedicated Notion Card Container for Order Details (md:col-span-5) */}
+          <div className="md:col-span-5 min-w-0 flex flex-col">
+            <div className="bg-[#fcfbf9] border border-[#e5e3df] rounded-lg p-3 flex-1 flex flex-col justify-between min-w-0 shadow-notion-xs">
+              <div className="flex flex-col gap-1 min-w-0">
+                {/* Header Label: Detail Pesanan */}
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#5d5b54] uppercase tracking-wider">
+                  <Package className="w-3 h-3 text-[#5645d4] shrink-0" />
+                  <span>Detail Pesanan</span>
+                </div>
+
+                {/* Product Name */}
+                <h5
+                  className="text-xs sm:text-sm font-semibold text-[#1a1a1a] line-clamp-1 break-words mt-0.5"
+                  title={order.productName}
+                >
+                  {order.productName}
+                </h5>
+
+                {/* Specifications */}
+                {hasSpecs ? (
+                  <div
+                    className="max-h-14 overflow-y-auto overflow-x-hidden pr-1 text-xs text-[#5d5b54] leading-relaxed break-words"
+                    title={order.specs}
+                  >
+                    {order.specs}
+                  </div>
+                ) : (
+                  <p className="text-xs text-[#5d5b54] italic">Spesifikasi standar</p>
+                )}
+              </div>
+
+              {/* Notes: Yellow callout badge if present */}
+              {hasNotes && (
+                <div
+                  className="mt-2.5 px-2.5 py-1.5 rounded-md bg-[#fef7d6] border border-[#f9e79f] text-[11px] text-[#523410] max-h-14 overflow-y-auto overflow-x-hidden pr-1 break-words leading-snug"
+                  title={order.notes}
+                >
+                  <span className="font-semibold text-[#793400]">Catatan: </span>
+                  <span>{order.notes}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* Notes */}
-        {order.notes && (
-          <p className="px-3 py-2 rounded-lg bg-[#fef7d6] border border-[#f9e79f] text-xs text-[#523410] truncate" title={order.notes}>
-            Catatan: {order.notes}
-          </p>
-        )}
       </div>
 
       {/* Footer: statuses + design */}
       <div className="px-4 sm:px-5 py-3 bg-[#fafaf9] border-t border-[#e5e3df] rounded-b-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:items-center sm:gap-4">
           <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-            <span className="text-[11px] text-[#787671]">Pembayaran</span>
+            <span className="text-[11px] text-[#5d5b54]">Pembayaran</span>
             <span className="relative flex-1 sm:flex-initial">
               <select
                 value={order.paymentStatus}
                 onChange={handlePaymentChange}
-                className={`w-full sm:w-auto appearance-none pl-2.5 pr-6 py-1.5 sm:py-1 rounded-md text-xs font-medium border shadow-notion-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#5645d4] transition-all min-h-[36px] sm:min-h-0 ${currentPayment.bg} ${currentPayment.text}`}
+                className={`w-full sm:w-auto appearance-none pl-2.5 pr-6 py-1.5 rounded-md text-xs font-medium border shadow-notion-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#5645d4] transition-all min-h-[36px] ${currentPayment.bg} ${currentPayment.text}`}
               >
                 <option value="LUNAS">Lunas</option>
                 <option value="DP">DP (Uang Muka)</option>
@@ -236,12 +341,12 @@ function OrderRowCardComponent({
           </label>
 
           <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-            <span className="text-[11px] text-[#787671]">Produksi</span>
+            <span className="text-[11px] text-[#5d5b54]">Produksi</span>
             <span className="relative flex-1 sm:flex-initial">
               <select
                 value={order.processStatus}
                 onChange={handleProcessChange}
-                className={`w-full sm:w-auto appearance-none pl-2.5 pr-6 py-1.5 sm:py-1 rounded-md text-xs font-medium border shadow-notion-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#5645d4] transition-all min-h-[36px] sm:min-h-0 ${currentProcess.bg} ${currentProcess.text}`}
+                className={`w-full sm:w-auto appearance-none pl-2.5 pr-6 py-1.5 rounded-md text-xs font-medium border shadow-notion-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#5645d4] transition-all min-h-[36px] ${currentProcess.bg} ${currentProcess.text}`}
               >
                 <option value="ANTREAN">1. Antrean</option>
                 <option value="SETTING_DESAIN">2. Setting Desain</option>
@@ -274,7 +379,8 @@ const OrderRowCard = React.memo(OrderRowCardComponent, (prevProps, nextProps) =>
   return (
     prevProps.order === nextProps.order &&
     prevProps.index === nextProps.index &&
-    prevProps.isDragging === nextProps.isDragging
+    prevProps.isDragging === nextProps.isDragging &&
+    prevProps.isSelected === nextProps.isSelected
   );
 });
 

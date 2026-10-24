@@ -26,6 +26,30 @@ import {
 } from '@/lib/supabase';
 import { calculateHPP, calculateMargin } from '@/lib/utils';
 
+
+/**
+ * Timezone-safe month extraction helper using string slicing (YYYY-MM).
+ * Avoids UTC date drift inherent in `new Date(dateStr).getMonth()`.
+ */
+export function getOrderMonth(
+  orderOrDate?: { orderDate?: string; createdAt?: string } | string | null
+): string {
+  if (!orderOrDate) return '';
+  const raw =
+    typeof orderOrDate === 'string'
+      ? orderOrDate.trim()
+      : (orderOrDate.orderDate || orderOrDate.createdAt || '').trim();
+
+  if (!raw) return '';
+  if (raw.length >= 7 && /^\d{4}-\d{2}/.test(raw)) {
+    return raw.slice(0, 7);
+  }
+  if (raw.length >= 7 && /^\d{4}\/\d{2}/.test(raw)) {
+    return raw.slice(0, 7).replace('/', '-');
+  }
+  return '';
+}
+
 export interface OrderContextType {
   orders: Order[];
   loading: boolean;
@@ -62,6 +86,13 @@ export interface OrderContextType {
   configReason?: string;
   error: string | null;
   clearError: () => void;
+  selectedMonth: string;
+  setSelectedMonth: (month: string) => void;
+  availableMonths: string[];
+  selectedOrderIds: string[];
+  toggleSelectOrder: (orderId: string) => void;
+  selectAllOrders: (orderIds: string[]) => void;
+  clearSelectedOrders: () => void;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -77,8 +108,28 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
   const [activeDrawerOrderId, setActiveDrawerOrderId] = useState<string | null>(null);
   const [lightboxFile, setLightboxFile] = useState<DesignFile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedMonthState, setSelectedMonthState] = useState<string>('');
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 
   const clearError = useCallback(() => setError(null), []);
+
+  const setSelectedMonth = useCallback((month: string) => {
+    setSelectedMonthState(month);
+  }, []);
+
+  const toggleSelectOrder = useCallback((orderId: string) => {
+    setSelectedOrderIds((prev) =>
+      prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId]
+    );
+  }, []);
+
+  const selectAllOrders = useCallback((orderIds: string[]) => {
+    setSelectedOrderIds(Array.from(new Set(orderIds)));
+  }, []);
+
+  const clearSelectedOrders = useCallback(() => {
+    setSelectedOrderIds([]);
+  }, []);
 
   const configStatus = useMemo(() => {
     if (typeof getSupabaseConfigStatus === 'function') {
@@ -311,6 +362,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       if (activeDrawerOrderId === id) {
         setActiveDrawerOrderId(null);
       }
+      setSelectedOrderIds((prev) => prev.filter((orderId) => orderId !== id));
 
       // 1. Frame 0: Synchronous removal
       setOrders(previousOrders.filter((o) => o.id !== id));
@@ -539,10 +591,64 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     [orders]
   );
 
-  // Heavy computations isolated with useMemo
-  const metrics = useMemo(() => orderService.getDashboardMetrics(orders), [orders]);
-  const monthlyProfit = useMemo(() => orderService.getMonthlyProfitData(orders), [orders]);
-  const buyerSummaries = useMemo(() => orderService.getBuyerSummaries(orders), [orders]);
+  // Milestone 2: Available months derived from all orders (newest first)
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>();
+    orders.forEach((o) => {
+      const m = getOrderMonth(o);
+      if (m) set.add(m);
+    });
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [orders]);
+
+  // Client-only current month resolved in useEffect to comply with Next.js 16 cacheComponents prerendering
+  const [clientCurrentMonth, setClientCurrentMonth] = useState<string>('');
+
+  useEffect(() => {
+    const now = new Date();
+    setClientCurrentMonth(
+      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    );
+  }, []);
+
+  // Default month: current month if in available months, else latest available month, else client current month
+  const defaultMonth = useMemo(() => {
+    if (clientCurrentMonth && availableMonths.includes(clientCurrentMonth)) {
+      return clientCurrentMonth;
+    }
+    if (availableMonths.length > 0) {
+      return availableMonths[0]; // latest available month with data
+    }
+    return clientCurrentMonth;
+  }, [availableMonths, clientCurrentMonth]);
+
+  const selectedMonth = selectedMonthState || defaultMonth;
+
+  // Dynamic active orders for dashboard:
+  // If 1+ orders selected via checkbox -> calculate strictly over selected orders (Dynamic Override)
+  // Otherwise -> calculate strictly over orders matching selectedMonth (Monthly Scoping)
+  const activeOrdersForDashboard = useMemo(() => {
+    if (selectedOrderIds.length > 0) {
+      const selectedSet = new Set(selectedOrderIds);
+      return orders.filter((o) => selectedSet.has(o.id));
+    }
+    return orders.filter((o) => getOrderMonth(o) === selectedMonth);
+  }, [orders, selectedOrderIds, selectedMonth]);
+
+  // Scoped metrics and buyer summaries fed by activeOrdersForDashboard
+  // Profit remains strictly computed from orders (omzet - totalHpp), completely independent of Capex/Materials
+  const metrics = useMemo(
+    () => orderService.getDashboardMetrics(activeOrdersForDashboard),
+    [activeOrdersForDashboard]
+  );
+  const monthlyProfit = useMemo(
+    () => orderService.getMonthlyProfitData(orders),
+    [orders]
+  );
+  const buyerSummaries = useMemo(
+    () => orderService.getBuyerSummaries(activeOrdersForDashboard),
+    [activeOrdersForDashboard]
+  );
 
   // Context value memoization
   const contextValue = useMemo<OrderContextType>(
@@ -582,6 +688,13 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       configReason: configStatus.reason,
       error,
       clearError,
+      selectedMonth,
+      setSelectedMonth,
+      availableMonths,
+      selectedOrderIds,
+      toggleSelectOrder,
+      selectAllOrders,
+      clearSelectedOrders,
     }),
     [
       orders,
@@ -613,6 +726,13 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       configStatus.reason,
       error,
       clearError,
+      selectedMonth,
+      setSelectedMonth,
+      availableMonths,
+      selectedOrderIds,
+      toggleSelectOrder,
+      selectAllOrders,
+      clearSelectedOrders,
     ]
   );
 

@@ -12,6 +12,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   X,
+  Receipt,
 } from 'lucide-react';
 import { useSidebar } from '@/context/SidebarContext';
 import {
@@ -45,6 +46,12 @@ const navItems: NavItem[] = [
     href: '/history',
     icon: History,
     description: 'Arsip pesanan selesai.',
+  },
+  {
+    label: 'Capex & Bahan',
+    href: '/capex',
+    icon: Receipt,
+    description: 'Biaya modal & bahan baku.',
   },
 ];
 

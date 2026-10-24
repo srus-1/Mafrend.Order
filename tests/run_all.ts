@@ -15,6 +15,7 @@ async function main() {
   const testFiles = [
     path.resolve(process.cwd(), 'tests/e2e_suite.ts'),
     path.resolve(process.cwd(), 'tests/mobile_sidebar.test.ts'),
+    path.resolve(process.cwd(), 'tests/r4_r5_verification.test.ts'),
   ];
 
   const stream = run({

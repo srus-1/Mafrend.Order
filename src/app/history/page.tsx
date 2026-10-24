@@ -1,11 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useOrders } from '@/context/OrderContext';
+import React, { useState, useMemo } from 'react';
+import { useOrders, getOrderMonth } from '@/context/OrderContext';
 import { formatRp, formatDateShort } from '@/lib/utils';
+import {
+  exportOrdersToCSV,
+  downloadCSVFile,
+  exportOrdersToExcel,
+  downloadExcelFile,
+  exportOrdersToPDF,
+} from '@/lib/csvExport';
+import ExportMenuButton from '@/components/shared/ExportMenuButton';
 import {
   History,
   Calendar,
+  ChevronDown,
   Search,
   FileImage,
   PackageCheck,
@@ -13,43 +22,82 @@ import {
   Inbox,
 } from 'lucide-react';
 
+const INDONESIAN_MONTHS = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+];
+
+function formatMonthLabel(monthKey: string): string {
+  if (!monthKey || monthKey === 'ALL') return 'Semua Bulan';
+  if (!monthKey.includes('-')) return monthKey;
+  const [yearStr, monthStr] = monthKey.split('-');
+  const monthIdx = parseInt(monthStr, 10) - 1;
+  if (monthIdx >= 0 && monthIdx < 12) {
+    return `${INDONESIAN_MONTHS[monthIdx]} ${yearStr}`;
+  }
+  return monthKey;
+}
+
 export default function HistoryPage() {
-  const { orders, setActiveDrawerOrder } = useOrders();
+  const {
+    orders,
+    setActiveDrawerOrder,
+    selectedMonth,
+    setSelectedMonth,
+    availableMonths = [],
+  } = useOrders();
 
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
 
   // Filter for completed orders
-  const completedOrders = orders.filter((o) => o.processStatus === 'SELESAI');
+  const completedOrders = useMemo(
+    () => orders.filter((o) => o.processStatus === 'SELESAI'),
+    [orders]
+  );
 
-  // Available unique months
-  const months: string[] = Array.from(
-    new Set(
-      completedOrders.map((o) => {
-        const d = new Date(o.orderDate || o.createdAt);
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      })
-    )
-  ).sort().reverse();
+  // Available unique months synced with global availableMonths + completed orders
+  const displayMonths: string[] = useMemo(() => {
+    const set = new Set<string>();
+    if (selectedMonth && selectedMonth !== 'ALL') set.add(selectedMonth);
+    availableMonths.forEach((m) => {
+      if (m && m !== 'ALL') set.add(m);
+    });
+    completedOrders.forEach((o) => {
+      const m = getOrderMonth(o);
+      if (m) set.add(m);
+    });
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [availableMonths, completedOrders, selectedMonth]);
 
-  // Filter by search & month
-  const filteredHistory = completedOrders.filter((order) => {
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
-      const matchName = order.buyerName.toLowerCase().includes(q);
-      const matchNumber = order.orderNumber.toLowerCase().includes(q);
-      const matchProduct = order.productName.toLowerCase().includes(q);
-      if (!matchName && !matchNumber && !matchProduct) return false;
-    }
+  // Filter by search & month (timezone-safe via getOrderMonth, matching Dashboard)
+  const filteredHistory = useMemo(() => {
+    return completedOrders.filter((order) => {
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase();
+        const matchName = order.buyerName.toLowerCase().includes(q);
+        const matchNumber = order.orderNumber.toLowerCase().includes(q);
+        const matchProduct = order.productName.toLowerCase().includes(q);
+        if (!matchName && !matchNumber && !matchProduct) return false;
+      }
 
-    if (selectedMonth !== 'ALL') {
-      const d = new Date(order.orderDate || order.createdAt);
-      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      if (monthKey !== selectedMonth) return false;
-    }
+      if (selectedMonth && selectedMonth !== 'ALL') {
+        const monthKey = getOrderMonth(order);
+        if (monthKey !== selectedMonth) return false;
+      }
 
-    return true;
-  });
+      return true;
+    });
+  }, [completedOrders, searchTerm, selectedMonth]);
 
   // Calculate Batch Statistics
   const totalCompletedPcs = filteredHistory.reduce((sum, o) => sum + o.qty, 0);
@@ -67,14 +115,16 @@ export default function HistoryPage() {
   return (
     <div className="flex flex-col gap-5">
       {/* Header Banner - Notion deep navy hero band */}
-      <div className="relative overflow-hidden bg-[#0a1530] p-4 sm:p-5 md:p-6 rounded-xl border border-[#1a2a52] shadow-notion-hero animate-fade-in-up flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="relative z-20 bg-[#0a1530] p-4 sm:p-5 md:p-6 rounded-xl border border-[#1a2a52] shadow-notion-hero animate-fade-in-up flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Subtle decorative Notion sticky-note dots & mesh background */}
-        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-[#5645d4]/10 blur-2xl pointer-events-none" />
-        <div className="absolute top-3 right-28 w-2 h-2 rounded-full bg-[#ffe8d4] opacity-80" />
-        <div className="absolute top-6 right-20 w-1.5 h-1.5 rounded-full bg-[#d9f3e1] opacity-70" />
-        <div className="absolute bottom-4 right-36 w-2 h-2 rounded-full bg-[#dcecfa] opacity-75" />
-        <div className="absolute top-5 right-8 w-2 h-2 rounded-full bg-[#fde0ec] opacity-80" />
-        <div className="absolute bottom-3 right-12 w-1.5 h-1.5 rounded-full bg-[#f9e79f] opacity-70" />
+        <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
+          <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-[#5645d4]/10 blur-2xl" />
+          <div className="absolute top-3 right-28 w-2 h-2 rounded-full bg-[#ffe8d4] opacity-80" />
+          <div className="absolute top-6 right-20 w-1.5 h-1.5 rounded-full bg-[#d9f3e1] opacity-70" />
+          <div className="absolute bottom-4 right-36 w-2 h-2 rounded-full bg-[#dcecfa] opacity-75" />
+          <div className="absolute top-5 right-8 w-2 h-2 rounded-full bg-[#fde0ec] opacity-80" />
+          <div className="absolute bottom-3 right-12 w-1.5 h-1.5 rounded-full bg-[#f9e79f] opacity-70" />
+        </div>
 
         <div className="relative z-10 flex items-center gap-3.5">
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-[#5645d4] text-white flex items-center justify-center shadow-[0_4px_12px_rgba(86,69,212,0.4)] shrink-0">
@@ -90,11 +140,62 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        <div className="relative z-10 flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <div className="relative z-10 flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          {/* Notion-style Month Selector Dropdown (synced with Dashboard) */}
+          <div className="relative flex items-center w-full sm:w-auto">
+            <label htmlFor="history-month-select" className="sr-only">
+              Pilih Bulan Riwayat
+            </label>
+            <div className="absolute left-2.5 pointer-events-none text-[#5645d4]">
+              <Calendar className="w-3.5 h-3.5" />
+            </div>
+            <select
+              id="history-month-select"
+              aria-label="Pilih Bulan Riwayat"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="w-full sm:w-auto appearance-none pl-8 pr-8 py-2 rounded-lg bg-white border border-[#d6d3cd] text-[#1a1a1a] text-xs font-semibold shadow-xs hover:border-[#5645d4] focus:outline-none focus:ring-2 focus:ring-[#5645d4] cursor-pointer min-h-[36px]"
+            >
+              <option value="ALL">Semua Bulan</option>
+              {displayMonths.map((m) => (
+                <option key={m} value={m}>
+                  {formatMonthLabel(m)}
+                </option>
+              ))}
+            </select>
+            <div className="absolute right-2.5 pointer-events-none text-[#787671]">
+              <ChevronDown className="w-3.5 h-3.5" />
+            </div>
+          </div>
+
           <div className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#1a2a52] border border-[#2a3c6b] text-white text-xs font-medium shadow-xs w-full sm:w-auto">
             <PackageCheck className="w-4 h-4 text-[#1aae39]" />
-            <span><strong className="text-white font-semibold">{completedOrders.length}</strong> Pesanan Selesai</span>
+            <span><strong className="text-white font-semibold">{filteredHistory.length}</strong> Pesanan Selesai</span>
           </div>
+
+          <ExportMenuButton
+            label="Unduh Laporan"
+            ariaLabel="Unduh CSV, Excel, atau PDF Riwayat Pesanan"
+            variant="purple"
+            onExportExcel={() => {
+              const excelContent = exportOrdersToExcel(
+                filteredHistory,
+                `Arsip Selesai (${formatMonthLabel(selectedMonth)})`
+              );
+              downloadExcelFile(`eganci-riwayat-owner-${selectedMonth || 'all'}.xls`, excelContent);
+            }}
+            onExportPDF={() => {
+              exportOrdersToPDF(
+                filteredHistory,
+                'Laporan Arsip Pesanan Selesai Owner',
+                `Periode: ${formatMonthLabel(selectedMonth)}`
+              );
+            }}
+            onExportCSV={() => {
+              const csvContent = exportOrdersToCSV(filteredHistory);
+              downloadCSVFile(`eganci-history-orders-ml-${selectedMonth || 'all'}.csv`, csvContent);
+            }}
+          />
         </div>
       </div>
 
@@ -150,7 +251,7 @@ export default function HistoryPage() {
             />
           </div>
 
-          <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
             <div className="flex items-center gap-1 px-2.5 py-1.5 sm:py-1 bg-[#f6f5f4] rounded-md border border-[#e5e3df] text-xs font-medium text-[#5d5b54] shrink-0">
               <Calendar className="w-3.5 h-3.5 text-[#787671]" />
               <span>Periode:</span>
@@ -158,12 +259,12 @@ export default function HistoryPage() {
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="flex-1 sm:flex-initial px-2.5 py-1.5 sm:py-1 text-xs font-medium bg-white border border-[#c8c4be] rounded-md text-[#1a1a1a] focus:outline-none focus:border-[#5645d4] min-h-[36px] sm:min-h-0 cursor-pointer"
+              className="flex-1 sm:flex-initial px-2.5 py-1.5 sm:py-1 text-xs font-semibold bg-white border border-[#c8c4be] rounded-md text-[#1a1a1a] focus:outline-none focus:border-[#5645d4] min-h-[36px] sm:min-h-0 cursor-pointer"
             >
               <option value="ALL">Semua Bulan</option>
-              {months.map((m) => (
+              {displayMonths.map((m) => (
                 <option key={m} value={m}>
-                  Bulan {m}
+                  {formatMonthLabel(m)}
                 </option>
               ))}
             </select>

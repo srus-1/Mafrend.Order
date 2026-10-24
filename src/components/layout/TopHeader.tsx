@@ -1,13 +1,21 @@
 'use client';
 
 import React from 'react';
-import { Search, Plus, Clock, Menu, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Search, Plus, Clock, Menu } from 'lucide-react';
 import { useOrders } from '@/context/OrderContext';
 import { useSidebar } from '@/context/SidebarContext';
 
 export default function TopHeader() {
+  const pathname = usePathname();
   const { searchQuery, setSearchQuery, openCreateModal, metrics } = useOrders();
-  const { isMobileOpen, toggleMobile, isCollapsed, toggleCollapsed } = useSidebar();
+  const { isMobileOpen, toggleMobile } = useSidebar();
+
+  // Navbar hanya ditampilkan khusus di halaman Antrean Pesanan (/order)
+  const isOrderPage = pathname === '/' || pathname === '/order' || pathname?.startsWith('/order/');
+  if (!isOrderPage) {
+    return null;
+  }
 
   const activeOrdersCount = metrics.activeOrdersCount;
 
@@ -26,21 +34,6 @@ export default function TopHeader() {
             aria-controls="mobile-sidebar"
           >
             <Menu className="w-5 h-5" />
-          </button>
-
-          {/* Desktop Sidebar Collapse Toggle Button */}
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            className="hidden md:inline-flex items-center justify-center p-1.5 rounded-md text-[#5d5b54] hover:text-[#1a1a1a] hover:bg-[#f6f5f4] transition-colors focus:outline-none focus:ring-1 focus:ring-[#5645d4] shrink-0 cursor-pointer"
-            aria-label={isCollapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'}
-            title={isCollapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'}
-          >
-            {isCollapsed ? (
-              <PanelLeftOpen className="w-4 h-4 text-[#5d5b54]" />
-            ) : (
-              <PanelLeftClose className="w-4 h-4 text-[#5d5b54]" />
-            )}
           </button>
 
           {/* Global Search Bar (Notion search-pill) */}
