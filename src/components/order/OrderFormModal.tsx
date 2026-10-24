@@ -276,9 +276,10 @@ function OrderFormContent({
                   type="number"
                   inputMode="numeric"
                   min="1"
-                  value={Number.isFinite(qty) ? qty : 0}
+                  placeholder="0"
+                  value={qty || ''}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setQty(Number(e.target.value))}
+                  onChange={(e) => setQty(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="w-full px-3 py-2 text-sm font-semibold bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] focus:ring-1 focus:ring-[#5645d4]"
                 />
               </div>
@@ -292,9 +293,10 @@ function OrderFormContent({
                   inputMode="numeric"
                   min="0"
                   step="100"
-                  value={Number.isFinite(pricePerPcs) ? pricePerPcs : 0}
+                  placeholder="0"
+                  value={pricePerPcs || ''}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setPricePerPcs(Number(e.target.value))}
+                  onChange={(e) => setPricePerPcs(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="w-full px-3 py-2 text-sm font-semibold bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] focus:ring-1 focus:ring-[#5645d4]"
                 />
               </div>
@@ -329,9 +331,10 @@ function OrderFormContent({
                   inputMode="numeric"
                   min="0"
                   step="50"
-                  value={Number.isFinite(bahanBaku) ? bahanBaku : 0}
+                  placeholder="0"
+                  value={bahanBaku || ''}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setBahanBaku(Number(e.target.value))}
+                  onChange={(e) => setBahanBaku(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
                 />
               </div>
@@ -345,9 +348,10 @@ function OrderFormContent({
                   inputMode="numeric"
                   min="0"
                   step="50"
-                  value={Number.isFinite(tintaSablon) ? tintaSablon : 0}
+                  placeholder="0"
+                  value={tintaSablon || ''}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setTintaSablon(Number(e.target.value))}
+                  onChange={(e) => setTintaSablon(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
                 />
               </div>
@@ -361,9 +365,10 @@ function OrderFormContent({
                   inputMode="numeric"
                   min="0"
                   step="50"
-                  value={Number.isFinite(tenagaKerja) ? tenagaKerja : 0}
+                  placeholder="0"
+                  value={tenagaKerja || ''}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setTenagaKerja(Number(e.target.value))}
+                  onChange={(e) => setTenagaKerja(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
                 />
               </div>
@@ -377,9 +382,10 @@ function OrderFormContent({
                   inputMode="numeric"
                   min="0"
                   step="50"
-                  value={Number.isFinite(kemasan) ? kemasan : 0}
+                  placeholder="0"
+                  value={kemasan || ''}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setKemasan(Number(e.target.value))}
+                  onChange={(e) => setKemasan(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
                 />
               </div>
@@ -393,9 +399,10 @@ function OrderFormContent({
                   inputMode="numeric"
                   min="0"
                   step="50"
-                  value={Number.isFinite(overhead) ? overhead : 0}
+                  placeholder="0"
+                  value={overhead || ''}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setOverhead(Number(e.target.value))}
+                  onChange={(e) => setOverhead(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
                 />
               </div>
@@ -475,9 +482,10 @@ function OrderFormContent({
                     inputMode="numeric"
                     min="0"
                     step="50000"
-                    value={Number.isFinite(dpAmount) ? dpAmount : 0}
+                    placeholder="0"
+                    value={dpAmount || ''}
                     onFocus={selectOnFocus}
-                    onChange={(e) => setDpAmount(Number(e.target.value))}
+                    onChange={(e) => setDpAmount(e.target.value === '' ? 0 : Number(e.target.value))}
                     className="w-full px-3 py-2 text-sm font-semibold bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
                   />
                   <p className="text-[11px] text-[#787671] mt-1">
