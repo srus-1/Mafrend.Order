@@ -17,7 +17,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'eganci — Screen Printing & Ganci Manager',
+  title: 'Mafrend.Order',
   description:
     'Sistem Manajemen Produksi Sablon & Gantungan Kunci Custom, Kalkulasi HPP Otomatis, dan Inspeksi File Cetak',
 };

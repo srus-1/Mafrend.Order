@@ -150,16 +150,10 @@ export default function Sidebar() {
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-lg font-bold tracking-tight text-[#1a1a1a]">
-                      eganci
-                    </span>
-                    <span className="inline-flex items-center px-1.5 py-0.2 rounded-sm text-[10px] font-semibold bg-[#fef7d6] text-[#793400] border border-[#f9e79f] uppercase tracking-wider">
-                      PRO
+                    <span className="text-lg font-bold tracking-tight text-[#1a1a1a] truncate">
+                      Mafrend.Order
                     </span>
                   </div>
-                  <p className="text-[11px] text-[#787671] font-medium leading-tight mt-0.5 truncate">
-                    Manajemen Sablon & Ganci
-                  </p>
                 </div>
               </div>
               <button
@@ -320,15 +314,9 @@ export default function Sidebar() {
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-lg font-bold tracking-tight text-[#1a1a1a]">
-                    eganci
-                  </span>
-                  <span className="inline-flex items-center px-1.5 py-0.2 rounded-sm text-[10px] font-semibold bg-[#fef7d6] text-[#793400] border border-[#f9e79f] uppercase tracking-wider">
-                    PRO
+                    Mafrend.Order
                   </span>
                 </div>
-                <p className="text-[11px] text-[#787671] font-medium leading-tight mt-0.5">
-                  Manajemen Sablon & Ganci
-                </p>
               </div>
             </div>
 
