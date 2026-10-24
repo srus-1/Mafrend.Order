@@ -273,12 +273,14 @@ export const orderService = {
 
     const now = new Date();
     const year = now.getFullYear();
+    const shortYear = String(year).slice(-2);
+    const prefix = `MF${shortYear}`;
 
     if (!supabase) {
       // Degraded in-memory fallback object
       const fallbackOrder: Order = {
         id: `ord-${Date.now()}`,
-        orderNumber: `MF${year}${String(Math.floor(Math.random() * 900) + 100)}`,
+        orderNumber: `${prefix}${String(Math.floor(Math.random() * 900) + 100)}`,
         orderDate: newOrderData.orderDate || now.toISOString().split('T')[0],
         deadline: newOrderData.deadline,
         buyerName: newOrderData.buyerName,
@@ -317,7 +319,14 @@ export const orderService = {
       (row: { order_number?: string; queue_order?: number }) => {
         if (row.order_number) {
           existingNumbers.add(row.order_number);
-          const seqPart = row.order_number.replace(/^[A-Z]+-?\d{4}-?/i, '');
+          let seqPart = '';
+          if (row.order_number.startsWith(prefix)) {
+            seqPart = row.order_number.slice(prefix.length);
+          } else if (row.order_number.startsWith(`MF${year}`)) {
+            seqPart = row.order_number.slice(`MF${year}`.length);
+          } else if (row.order_number.includes('-')) {
+            seqPart = row.order_number.split('-').pop() || '';
+          }
           const num = parseInt(seqPart, 10);
           if (!isNaN(num) && num > maxSeq) {
             maxSeq = num;
@@ -331,10 +340,10 @@ export const orderService = {
     );
 
     let nextSeq = maxSeq + 1;
-    let orderNumber = `MF${year}${String(nextSeq).padStart(3, '0')}`;
+    let orderNumber = `${prefix}${String(nextSeq).padStart(3, '0')}`;
     while (existingNumbers.has(orderNumber)) {
       nextSeq++;
-      orderNumber = `MF${year}${String(nextSeq).padStart(3, '0')}`;
+      orderNumber = `${prefix}${String(nextSeq).padStart(3, '0')}`;
     }
     const queueOrder = maxQueue + 1;
 
