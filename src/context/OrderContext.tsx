@@ -175,9 +175,10 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       }
 
       const tempId = `opt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const shortYear = String(now.getFullYear()).slice(-2);
       const optimisticOrder: Order = {
         id: tempId,
-        orderNumber: `EG-${now.getFullYear()}-${String(previousOrders.length + 1).padStart(3, '0')}`,
+        orderNumber: `MF${shortYear}${String(previousOrders.length + 1).padStart(3, '0')}`,
         orderDate: orderData.orderDate || now.toISOString().split('T')[0],
         deadline: orderData.deadline,
         buyerName: orderData.buyerName,

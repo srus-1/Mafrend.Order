@@ -16,6 +16,8 @@ export default function OrderPage() {
     loading,
   } = useOrders();
 
+  const [sortOrder, setSortOrder] = React.useState<'NEWEST' | 'OLDEST'>('NEWEST');
+
   // Filter and sort orders according to active criteria
   const sortedOrders = React.useMemo(() => {
     const filtered = orders.filter((order) => {
@@ -56,10 +58,17 @@ export default function OrderPage() {
       return true;
     });
 
-    return [...filtered].sort(
-      (a, b) => (a.queueOrder || 0) - (b.queueOrder || 0)
-    );
-  }, [orders, searchQuery, filterTab, dateFilter]);
+    return [...filtered].sort((a, b) => {
+      const timeA = new Date(a.createdAt || a.orderDate).getTime() || 0;
+      const timeB = new Date(b.createdAt || b.orderDate).getTime() || 0;
+      if (timeA !== timeB) {
+        return sortOrder === 'NEWEST' ? timeB - timeA : timeA - timeB;
+      }
+      return sortOrder === 'NEWEST'
+        ? b.orderNumber.localeCompare(a.orderNumber)
+        : a.orderNumber.localeCompare(b.orderNumber);
+    });
+  }, [orders, searchQuery, filterTab, dateFilter, sortOrder]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -88,10 +97,19 @@ export default function OrderPage() {
         </div>
 
         <div className="relative z-10 flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#1a2a52] border border-[#2a3c6b] text-xs font-medium text-white/90 shadow-xs">
+          <button
+            type="button"
+            onClick={() =>
+              setSortOrder((prev) => (prev === 'NEWEST' ? 'OLDEST' : 'NEWEST'))
+            }
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#1a2a52] hover:bg-[#233666] active:scale-[0.98] border border-[#2a3c6b] text-xs font-medium text-white/95 shadow-xs transition-all cursor-pointer min-h-[36px]"
+            title="Klik untuk mengubah urutan Terbaru / Terlama"
+          >
             <ArrowUpDown className="w-3.5 h-3.5 text-[#d6b6f6]" />
-            <span>Urutan Prioritas</span>
-          </div>
+            <span>
+              {sortOrder === 'NEWEST' ? 'Urutan: Terbaru' : 'Urutan: Terlama'}
+            </span>
+          </button>
 
           <button
             onClick={openCreateModal}
