@@ -278,7 +278,7 @@ export const orderService = {
       // Degraded in-memory fallback object
       const fallbackOrder: Order = {
         id: `ord-${Date.now()}`,
-        orderNumber: `MF-${year}-${String(Math.floor(Math.random() * 900) + 100)}`,
+        orderNumber: `MF${year}${String(Math.floor(Math.random() * 900) + 100)}`,
         orderDate: newOrderData.orderDate || now.toISOString().split('T')[0],
         deadline: newOrderData.deadline,
         buyerName: newOrderData.buyerName,
@@ -317,12 +317,10 @@ export const orderService = {
       (row: { order_number?: string; queue_order?: number }) => {
         if (row.order_number) {
           existingNumbers.add(row.order_number);
-          const match = row.order_number.match(/(\d+)$/);
-          if (match) {
-            const num = parseInt(match[1], 10);
-            if (!isNaN(num) && num > maxSeq) {
-              maxSeq = num;
-            }
+          const seqPart = row.order_number.replace(/^[A-Z]+-?\d{4}-?/i, '');
+          const num = parseInt(seqPart, 10);
+          if (!isNaN(num) && num > maxSeq) {
+            maxSeq = num;
           }
         }
         const q = Number(row.queue_order) || 0;
@@ -333,10 +331,10 @@ export const orderService = {
     );
 
     let nextSeq = maxSeq + 1;
-    let orderNumber = `MF-${year}-${String(nextSeq).padStart(3, '0')}`;
+    let orderNumber = `MF${year}${String(nextSeq).padStart(3, '0')}`;
     while (existingNumbers.has(orderNumber)) {
       nextSeq++;
-      orderNumber = `MF-${year}-${String(nextSeq).padStart(3, '0')}`;
+      orderNumber = `MF${year}${String(nextSeq).padStart(3, '0')}`;
     }
     const queueOrder = maxQueue + 1;
 
