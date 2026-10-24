@@ -88,6 +88,18 @@ function OrderFormContent({
   // Select whole number on focus so typing replaces the default 0
   const selectOnFocus = (e: React.FocusEvent<HTMLInputElement>) => e.target.select();
 
+  // Strip leading zeros directly on the DOM element and update numeric state
+  const handleNumericChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: React.Dispatch<React.SetStateAction<number>>
+  ) => {
+    const cleaned = e.target.value.replace(/^0+/, '');
+    if (e.target.value !== cleaned) {
+      e.target.value = cleaned;
+    }
+    setter(cleaned === '' ? 0 : Number(cleaned));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -279,7 +291,7 @@ function OrderFormContent({
                   placeholder="0"
                   value={qty || ''}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setQty(e.target.value === '' ? 0 : Number(e.target.value))}
+                  onChange={(e) => handleNumericChange(e, setQty)}
                   className="w-full px-3 py-2 text-sm font-semibold bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] focus:ring-1 focus:ring-[#5645d4]"
                 />
               </div>
@@ -296,7 +308,7 @@ function OrderFormContent({
                   placeholder="0"
                   value={pricePerPcs || ''}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setPricePerPcs(e.target.value === '' ? 0 : Number(e.target.value))}
+                  onChange={(e) => handleNumericChange(e, setPricePerPcs)}
                   className="w-full px-3 py-2 text-sm font-semibold bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] focus:ring-1 focus:ring-[#5645d4]"
                 />
               </div>
@@ -334,7 +346,7 @@ function OrderFormContent({
                   placeholder="0"
                   value={bahanBaku || ''}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setBahanBaku(e.target.value === '' ? 0 : Number(e.target.value))}
+                  onChange={(e) => handleNumericChange(e, setBahanBaku)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
                 />
               </div>
@@ -351,7 +363,7 @@ function OrderFormContent({
                   placeholder="0"
                   value={tintaSablon || ''}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setTintaSablon(e.target.value === '' ? 0 : Number(e.target.value))}
+                  onChange={(e) => handleNumericChange(e, setTintaSablon)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
                 />
               </div>
@@ -368,7 +380,7 @@ function OrderFormContent({
                   placeholder="0"
                   value={tenagaKerja || ''}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setTenagaKerja(e.target.value === '' ? 0 : Number(e.target.value))}
+                  onChange={(e) => handleNumericChange(e, setTenagaKerja)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
                 />
               </div>
@@ -385,7 +397,7 @@ function OrderFormContent({
                   placeholder="0"
                   value={kemasan || ''}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setKemasan(e.target.value === '' ? 0 : Number(e.target.value))}
+                  onChange={(e) => handleNumericChange(e, setKemasan)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
                 />
               </div>
@@ -402,7 +414,7 @@ function OrderFormContent({
                   placeholder="0"
                   value={overhead || ''}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setOverhead(e.target.value === '' ? 0 : Number(e.target.value))}
+                  onChange={(e) => handleNumericChange(e, setOverhead)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
                 />
               </div>
@@ -485,7 +497,7 @@ function OrderFormContent({
                     placeholder="0"
                     value={dpAmount || ''}
                     onFocus={selectOnFocus}
-                    onChange={(e) => setDpAmount(e.target.value === '' ? 0 : Number(e.target.value))}
+                    onChange={(e) => handleNumericChange(e, setDpAmount)}
                     className="w-full px-3 py-2 text-sm font-semibold bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
                   />
                   <p className="text-[11px] text-[#787671] mt-1">
