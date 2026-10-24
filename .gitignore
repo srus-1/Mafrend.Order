@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local agent & test artifacts
+/kantor-agent/
+/.agents/
+*_screenshot*.png
+
