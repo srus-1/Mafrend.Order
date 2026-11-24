@@ -7,8 +7,6 @@ import {
   ZoomOut,
   RotateCw,
   Download,
-  CheckCircle2,
-  AlertCircle,
   FileText,
 } from 'lucide-react';
 import { useOrders } from '@/context/OrderContext';
@@ -23,16 +21,6 @@ function LightboxContent({ file, onClose }: LightboxContentProps) {
   const [scale, setScale] = useState<number>(1);
   const [rotation, setRotation] = useState<number>(0);
 
-  // Lock body scroll on mount, restore on unmount
-  useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = originalOverflow;
-    };
-  }, []);
-
-  // Handle ESC key to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -59,60 +47,53 @@ function LightboxContent({ file, onClose }: LightboxContentProps) {
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md transition-opacity animate-in fade-in duration-200"
+      aria-label={`Pratinjau ${file.fileName}`}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md overscroll-contain"
     >
-      {/* Top Bar with File Meta & Actions */}
-      <div className="absolute top-0 inset-x-0 p-4 md:px-6 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/40 to-transparent text-white z-10">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <span className="px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-[#5645d4] text-white shrink-0">
+      {/* Top Bar */}
+      <div className="absolute top-0 inset-x-0 p-4 md:px-6 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent text-white z-10">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="px-2.5 py-1 rounded-lg text-xs font-bold uppercase bg-[#4638F5] text-white shrink-0">
             {file.fileType}
           </span>
-          <div className="min-w-0">
-            <h3 className="text-sm md:text-base font-semibold leading-tight max-w-[180px] sm:max-w-md truncate" title={file.fileName}>
-              {file.fileName}
-            </h3>
-            <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-300">
-              <span>{(file.fileSize / (1024 * 1024)).toFixed(2)} MB</span>
-              <span>•</span>
-              {file.isReadyToPrint ? (
-                <span className="inline-flex items-center gap-1 text-emerald-400 font-medium">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Siap Cetak
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-amber-400 font-medium">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  Setting Desain
-                </span>
-              )}
-            </div>
-          </div>
+          <h1 className="text-sm font-bold text-white truncate max-w-[200px] sm:max-w-md">
+            {file.fileName}
+          </h1>
+          <span
+            className={`hidden sm:inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold ${
+              file.isReadyToPrint
+                ? 'bg-[#6EEB9A] text-[#14161D]'
+                : 'bg-[#F9DC7E] text-[#14161D]'
+            }`}
+          >
+            {file.isReadyToPrint ? 'Siap Cetak' : 'Perlu Setting'}
+          </span>
         </div>
 
-        {/* Right Action Buttons */}
         <div className="flex items-center gap-2 shrink-0">
           <a
             href={file.fileUrl}
             download={file.fileName}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] rounded-md bg-[#5645d4] hover:bg-[#4534b3] text-white text-xs font-medium shadow-md transition-all active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl bg-[#4638F5] hover:bg-[#3B2EE0] text-white text-xs font-semibold"
           >
             <Download className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Unduh Berkas</span>
+            <span className="hidden sm:inline">Unduh</span>
           </a>
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-md bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer"
-            title="Tutup (Esc)"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/15 hover:bg-white/25 text-white"
+            aria-label="Tutup pratinjau"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Main Inspection Canvas */}
+      {/* Main Canvas */}
       <div className="relative w-full h-full flex items-center justify-center p-8 overflow-hidden">
         {isImage ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -123,7 +104,7 @@ function LightboxContent({ file, onClose }: LightboxContentProps) {
               transform: `scale(${scale}) rotate(${rotation}deg)`,
               transition: 'transform 0.15s ease-out',
             }}
-            className="max-h-[80vh] max-w-[85vw] object-contain rounded-lg shadow-2xl select-none"
+            className="max-h-[80vh] max-w-[85vw] object-contain rounded-xl shadow-2xl select-none"
           />
         ) : (
           <div
@@ -131,60 +112,60 @@ function LightboxContent({ file, onClose }: LightboxContentProps) {
               transform: `scale(${scale}) rotate(${rotation}deg)`,
               transition: 'transform 0.15s ease-out',
             }}
-            className="p-8 rounded-lg bg-slate-900 border border-slate-700/80 text-center max-w-md flex flex-col items-center justify-center shadow-2xl select-none"
+            className="p-8 rounded-2xl bg-[#151822] text-center max-w-md flex flex-col items-center justify-center shadow-2xl select-none"
           >
-            <div className="w-16 h-16 rounded-md bg-[#5645d4]/20 border border-[#5645d4]/40 text-[#5645d4] flex items-center justify-center mb-4">
-              <FileText className="w-8 h-8 text-[#5645d4]" />
+            <div className="w-14 h-14 rounded-2xl bg-[#272D3F] text-[#8EA6FF] flex items-center justify-center mb-4">
+              <FileText className="w-7 h-7" />
             </div>
-            <h4 className="text-base font-bold text-white mb-1">{file.fileName}</h4>
-            <p className="text-xs text-slate-400 mb-5">
-              Berkas desain {file.fileType} untuk proses separasi sablon.
-            </p>
+            <h2 className="text-base font-bold text-white mb-4">{file.fileName}</h2>
             <a
               href={file.fileUrl}
               download={file.fileName}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2 rounded-md bg-[#5645d4] hover:bg-[#4534b3] text-white text-xs font-semibold flex items-center gap-2 shadow-lg"
+              className="px-4 py-2.5 rounded-xl bg-[#4638F5] text-white text-xs font-semibold inline-flex items-center gap-2"
             >
               <Download className="w-4 h-4" />
-              Unduh Berkas
+              <span>Unduh Berkas</span>
             </a>
           </div>
         )}
       </div>
 
-      {/* Floating Bottom Control Bar */}
-      <div className="absolute bottom-4 sm:bottom-6 pb-[env(safe-area-inset-bottom)] inset-x-0 flex justify-center z-10 pointer-events-none">
-        <div className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-slate-900/90 border border-slate-700/80 text-white backdrop-blur-md shadow-2xl pointer-events-auto">
+      {/* Bottom Controls */}
+      <div className="absolute bottom-5 inset-x-0 flex justify-center z-10 pointer-events-none">
+        <div className="flex items-center gap-1 px-3 py-1.5 rounded-2xl bg-[#151822]/95 text-white shadow-2xl pointer-events-auto">
           <button
+            type="button"
             onClick={handleZoomOut}
-            className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-md hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
-            title="Perkecil"
+            className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/10"
+            aria-label="Perkecil"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
-          <span className="text-xs font-semibold px-2 text-slate-200">
+          <span className="text-xs font-bold px-2 tabular-nums">
             {Math.round(scale * 100)}%
           </span>
           <button
+            type="button"
             onClick={handleZoomIn}
-            className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-md hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
-            title="Perbesar"
+            className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/10"
+            aria-label="Perbesar"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
-          <div className="w-px h-5 bg-slate-700 mx-1" />
           <button
+            type="button"
             onClick={handleRotate}
-            className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-md hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
-            title="Putar 90°"
+            className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/10"
+            aria-label="Putar 90 derajat"
           >
             <RotateCw className="w-4 h-4" />
           </button>
           <button
+            type="button"
             onClick={handleReset}
-            className="min-h-[40px] px-3 py-2 text-xs font-medium rounded-md hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer flex items-center justify-center"
+            className="px-3 py-1.5 text-xs font-semibold rounded-xl hover:bg-white/10"
           >
             Reset
           </button>

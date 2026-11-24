@@ -1,7 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { usePathname } from 'next/navigation';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_STORAGE_KEY_WIDTH,
@@ -22,7 +21,6 @@ export interface SidebarContextType {
   closeMobile: () => void;
   toggleMobile: () => void;
   setIsDragging: (isDragging: boolean) => void;
-  resetWidth: () => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -33,14 +31,6 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsedState] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
-
-  // Auto-close mobile drawer on route transitions during render (React recommended pattern)
-  const pathname = usePathname();
-  const [prevPathname, setPrevPathname] = useState(pathname);
-  if (prevPathname !== pathname) {
-    setPrevPathname(pathname);
-    setIsMobileOpen(false);
-  }
 
   // SSR-safe client initialization: asynchronous with unmount guard to prevent cascading renders
   useEffect(() => {
@@ -104,10 +94,6 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   }, []);
-
-  const resetWidth = useCallback(() => {
-    setWidth(SIDEBAR_DEFAULT_WIDTH);
-  }, [setWidth]);
 
   const openMobile = useCallback(() => {
     setIsMobileOpen(true);
@@ -177,23 +163,36 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const contextValue = useMemo<SidebarContextType>(
+    () => ({
+      width,
+      isCollapsed,
+      isDragging,
+      isMobileOpen,
+      setWidth,
+      setIsCollapsed,
+      toggleCollapsed,
+      openMobile,
+      closeMobile,
+      toggleMobile,
+      setIsDragging,
+    }),
+    [
+      width,
+      isCollapsed,
+      isDragging,
+      isMobileOpen,
+      setWidth,
+      setIsCollapsed,
+      toggleCollapsed,
+      openMobile,
+      closeMobile,
+      toggleMobile,
+    ]
+  );
+
   return (
-    <SidebarContext.Provider
-      value={{
-        width,
-        isCollapsed,
-        isDragging,
-        isMobileOpen,
-        setWidth,
-        setIsCollapsed,
-        toggleCollapsed,
-        openMobile,
-        closeMobile,
-        toggleMobile,
-        setIsDragging,
-        resetWidth,
-      }}
-    >
+    <SidebarContext.Provider value={contextValue}>
       {children}
     </SidebarContext.Provider>
   );

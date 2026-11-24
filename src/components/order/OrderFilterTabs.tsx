@@ -1,9 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { FilterTab } from '@/types/order';
 import { useOrders } from '@/context/OrderContext';
-import { Calendar, X } from 'lucide-react';
+import { Search, Calendar, X } from 'lucide-react';
 
 interface TabItem {
   id: FilterTab;
@@ -12,7 +12,40 @@ interface TabItem {
 }
 
 export default function OrderFilterTabs() {
-  const { filterTab, setFilterTab, dateFilter, setDateFilter, orders } = useOrders();
+  const {
+    filterTab,
+    setFilterTab,
+    searchQuery,
+    setSearchQuery,
+    dateFilter,
+    setDateFilter,
+    orders,
+  } = useOrders();
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Press "/" to focus search input when not typing inside a form field
+  useEffect(() => {
+    const handleSlash = (e: KeyboardEvent) => {
+      if (e.key !== '/' || e.altKey || e.ctrlKey || e.metaKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName.toLowerCase();
+        if (
+          tag === 'input' ||
+          tag === 'textarea' ||
+          tag === 'select' ||
+          target.isContentEditable
+        ) {
+          return;
+        }
+      }
+      e.preventDefault();
+      searchInputRef.current?.focus();
+    };
+    window.addEventListener('keydown', handleSlash);
+    return () => window.removeEventListener('keydown', handleSlash);
+  }, []);
 
   const counts: Record<FilterTab, number> = {
     ALL: orders.length,
@@ -24,17 +57,17 @@ export default function OrderFilterTabs() {
   };
 
   const tabs: TabItem[] = [
-    { id: 'ALL', label: 'Semua Pesanan', count: counts.ALL },
+    { id: 'ALL', label: 'Semua', count: counts.ALL },
     { id: 'BELUM_LUNAS_DP', label: 'Belum Lunas / DP', count: counts.BELUM_LUNAS_DP },
-    { id: 'PROSES', label: 'Dalam Proses', count: counts.PROSES },
+    { id: 'PROSES', label: 'Diproses', count: counts.PROSES },
     { id: 'SELESAI', label: 'Selesai', count: counts.SELESAI },
   ];
 
   return (
-    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2 border-b border-[#e5e3df]">
-      {/* Filter Tabs - Notion style segmented */}
+    <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+      {/* Segmented Filter Track (Zero Border) */}
       <div
-        className="flex items-center gap-1.5 p-1 bg-[#f6f5f4] rounded-md border border-[#e5e3df] overflow-x-auto select-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex items-center gap-1 p-1 bg-[var(--bg-seg-track)] rounded-xl overflow-x-auto select-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {tabs.map((tab) => {
@@ -42,19 +75,20 @@ export default function OrderFilterTabs() {
           return (
             <button
               key={tab.id}
+              type="button"
               onClick={() => setFilterTab(tab.id)}
-              className={`flex items-center gap-2 px-3 py-2 min-h-[38px] rounded-md text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-2 min-h-[38px] rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
                 isActive
-                  ? 'bg-[#1a1a1a] text-white shadow-xs'
-                  : 'text-[#5d5b54] hover:text-[#1a1a1a] hover:bg-[#ede9e4]'
+                  ? 'bg-[#4638F5] text-[#FFFFFF]'
+                  : 'text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-surface)]'
               }`}
             >
               <span>{tab.label}</span>
               <span
-                className={`px-1.5 py-0.2 rounded text-[10px] font-semibold ${
+                className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold tabular-nums ${
                   isActive
-                    ? 'bg-white/20 text-white'
-                    : 'bg-[#e5e3df] text-[#37352f]'
+                    ? 'bg-white/20 text-[#FFFFFF]'
+                    : 'bg-[var(--bg-surface)] text-[var(--ink-primary)]'
                 }`}
               >
                 {tab.count}
@@ -64,31 +98,60 @@ export default function OrderFilterTabs() {
         })}
       </div>
 
-      {/* Date Filter & Clear Controls */}
-      <div className="flex items-center gap-2 w-full sm:w-auto">
-        <div className="relative flex-1 sm:flex-initial flex items-center">
-          <div className="absolute left-2.5 text-[#787671] pointer-events-none">
-            <Calendar className="w-3.5 h-3.5" />
-          </div>
+      {/* Search & Date Filter Controls */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+        <div className="relative flex-1 sm:w-64">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-muted)] pointer-events-none" />
           <input
-            type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="w-full sm:w-auto pl-8 pr-2.5 py-2 sm:py-1.5 text-xs font-medium bg-white border border-[#c8c4be] rounded-md text-[#37352f] focus:outline-none focus:border-[#5645d4] focus:ring-1 focus:ring-[#5645d4] min-h-[38px] sm:min-h-0"
-            title="Filter Tanggal"
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari pelanggan, kode, produk..."
+            aria-label="Cari pesanan"
+            className="w-full pl-9 pr-9 py-2 min-h-[38px] rounded-xl bg-[var(--bg-subtle)] text-xs font-medium text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)]"
           />
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              aria-label="Bersihkan pencarian"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-md flex items-center justify-center text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <span className="hidden sm:inline-flex absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-[var(--bg-surface)] text-[10px] font-semibold text-[var(--ink-muted)] pointer-events-none">
+              /
+            </span>
+          )}
         </div>
 
-        {dateFilter && (
-          <button
-            onClick={() => setDateFilter('')}
-            className="flex items-center justify-center gap-1 px-2.5 py-2 sm:py-1.5 text-xs text-[#37352f] bg-[#f6f5f4] hover:bg-[#ede9e4] border border-[#e5e3df] rounded-md transition-colors cursor-pointer min-h-[38px] sm:min-h-0"
-            title="Hapus filter tanggal"
-          >
-            <X className="w-3 h-3" />
-            <span>Hapus</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 sm:flex-initial flex items-center">
+            <Calendar className="w-3.5 h-3.5 absolute left-3 text-[var(--ink-muted)] pointer-events-none" />
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              aria-label="Filter tanggal pesanan"
+              title="Filter Tanggal"
+              className="w-full sm:w-auto pl-9 pr-3 py-2 min-h-[38px] rounded-xl bg-[var(--bg-subtle)] text-xs font-medium text-[var(--ink-primary)]"
+            />
+          </div>
+
+          {dateFilter && (
+            <button
+              type="button"
+              onClick={() => setDateFilter('')}
+              className="px-3 py-2 min-h-[38px] rounded-xl bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] text-xs font-semibold text-[var(--ink-primary)] flex items-center gap-1"
+              title="Hapus filter tanggal"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Reset</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

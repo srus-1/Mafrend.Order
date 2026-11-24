@@ -97,20 +97,21 @@ export default function OrderSortableList({ orders }: OrderSortableListProps) {
 
   if (orders.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 bg-white rounded-lg border border-[#e5e3df] text-center">
-        <div className="w-12 h-12 rounded-md bg-[#f6f5f4] border border-[#e5e3df] flex items-center justify-center text-[#787671] mb-3">
-          <Inbox className="w-6 h-6 stroke-[1.5]" />
+      <div className="flex flex-col items-center justify-center py-14 px-6 bg-[var(--bg-row)] rounded-2xl text-center">
+        <div className="w-12 h-12 rounded-2xl bg-[var(--bg-chip-on-row)] flex items-center justify-center text-[var(--ink-muted)] mb-3">
+          <Inbox className="w-6 h-6 stroke-[1.6]" />
         </div>
-        <h3 className="text-sm font-semibold text-[#1a1a1a]">Antrean Kosong</h3>
-        <p className="text-xs text-[#787671] max-w-sm mt-1 mb-4">
-          Tidak ada data pesanan sesuai kriteria filter.
+        <h2 className="text-sm font-bold text-[var(--ink-primary)]">Antrean Kosong</h2>
+        <p className="text-xs text-[var(--ink-muted)] max-w-xs mt-1 mb-4">
+          Belum ada pesanan yang sesuai filter aktif.
         </p>
         <button
+          type="button"
           onClick={openCreateModal}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#5645d4] hover:bg-[#4534b3] text-white text-xs font-medium rounded-md shadow-xs transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[var(--cta-bg)] hover:bg-[var(--cta-hover)] text-[var(--cta-text)] text-xs font-semibold rounded-xl transition-colors min-h-[38px]"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Input Pesanan</span>
+          <span>Input pesanan</span>
         </button>
       </div>
     );

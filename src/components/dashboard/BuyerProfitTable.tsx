@@ -3,12 +3,7 @@
 import React, { useState } from 'react';
 import { BuyerSummary } from '@/types/order';
 import { formatRp } from '@/lib/utils';
-import {
-  MessageCircle,
-  Trophy,
-  TrendingUp,
-  Search,
-} from 'lucide-react';
+import { MessageCircle, Search, X } from 'lucide-react';
 
 interface BuyerProfitTableProps {
   buyers: BuyerSummary[];
@@ -23,226 +18,139 @@ export default function BuyerProfitTable({ buyers }: BuyerProfitTableProps) {
       b.buyerPhone.includes(searchTerm)
   );
 
-  const getRankBadge = (rank?: number) => {
-    if (rank === 1) {
-      return (
-        <span className="w-5 h-5 rounded-md bg-[#f9e79f] text-[#523410] font-bold text-xs flex items-center justify-center">
-          1
-        </span>
-      );
-    }
-    if (rank === 2) {
-      return (
-        <span className="w-5 h-5 rounded-md bg-[#f0eeec] text-[#37352f] font-bold text-xs flex items-center justify-center">
-          2
-        </span>
-      );
-    }
-    if (rank === 3) {
-      return (
-        <span className="w-5 h-5 rounded-md bg-[#ffe8d4] text-[#793400] font-bold text-xs flex items-center justify-center">
-          3
-        </span>
-      );
-    }
-    return (
-      <span className="w-5 h-5 rounded-md bg-[#f6f5f4] text-[#787671] font-medium text-xs flex items-center justify-center">
-        {rank}
-      </span>
-    );
+  const getRankBadgeClass = (rank?: number) => {
+    if (rank === 1) return 'bg-[#F9DC7E] text-[#14161D]';
+    if (rank === 2) return 'bg-[#8EA6FF] text-[#14161D]';
+    if (rank === 3) return 'bg-[#F29B76] text-[#14161D]';
+    return 'bg-[var(--bg-chip-on-row)] text-[var(--ink-secondary)]';
   };
 
   return (
-    <div className="bg-white rounded-xl p-4 sm:p-6 border border-[#d6d3cd] shadow-notion-panel flex flex-col gap-4 animate-fade-in-up delay-150">
-      {/* Table Header & Search Filter */}
+    <div className="bg-[var(--bg-surface)] shadow-[var(--shadow-card)] rounded-2xl p-4 sm:p-5 flex flex-col gap-3.5">
+      {/* Header & Search (Zero Sub-Headline) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-[#d9f3e1] text-[#0d5220] flex items-center justify-center shadow-xs">
-              <Trophy className="w-4 h-4" />
-            </div>
-            <h3 className="text-sm font-semibold text-[#1a1a1a]">
-              Ranking Pelanggan
-            </h3>
-          </div>
-          <p className="text-xs text-[#787671] mt-0.5">
-            Kontributor laba bersih tertinggi workshop.
-          </p>
-        </div>
+        <h2 className="text-sm font-bold text-[var(--ink-primary)]">
+          Ranking Pelanggan
+        </h2>
 
-        {/* Local Search Input */}
-        <div className="relative w-full sm:w-56">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#787671]" />
+        <div className="relative w-full sm:w-64">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-muted)] pointer-events-none" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Cari pelanggan..."
-            className="w-full pl-8 pr-3 py-1.5 sm:py-1 text-xs bg-white focus:bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] min-h-[36px] sm:min-h-0"
+            aria-label="Cari pelanggan"
+            className="w-full pl-9 pr-8 py-2 min-h-[38px] text-xs font-medium bg-[var(--bg-subtle)] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] rounded-xl"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              aria-label="Hapus pencarian pelanggan"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Mobile Card Stack View (< 768px) */}
-      <div className="grid grid-cols-1 gap-3 md:hidden">
-        {filteredBuyers.length === 0 ? (
-          <div className="py-8 text-center text-[#787671] text-xs bg-[#f6f5f4] rounded-lg border border-[#e5e3df]">
-            Pelanggan tidak ditemukan.
-          </div>
-        ) : (
-          filteredBuyers.map((buyer) => {
+      {/* Separated Buyer Row Cards (Clear Gap Between Rows) */}
+      {filteredBuyers.length === 0 ? (
+        <div className="py-10 text-center text-xs font-medium text-[var(--ink-muted)] bg-[var(--bg-row)] rounded-xl">
+          Pelanggan tidak ditemukan.
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {filteredBuyers.map((buyer) => {
             const cleanPhone = buyer.buyerPhone.replace(/\D/g, '');
-            const waNumber = cleanPhone.startsWith('0') ? `62${cleanPhone.slice(1)}` : cleanPhone;
-            const waUrl = `https://wa.me/${waNumber}?text=Halo%20${encodeURIComponent(buyer.buyerName)}`;
+            const waNumber = cleanPhone.startsWith('0')
+              ? `62${cleanPhone.slice(1)}`
+              : cleanPhone;
+            const waUrl = `https://wa.me/${waNumber}?text=Halo%20${encodeURIComponent(
+              buyer.buyerName
+            )},%20terima%20kasih%20telah%20memesan%20di%20Mafrend.Studio`;
 
             return (
               <div
                 key={buyer.buyerName}
-                className="p-3.5 rounded-xl border border-[#d6d3cd] bg-white card-bounce flex flex-col gap-2.5"
+                className="p-3.5 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-3"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {getRankBadge(buyer.rank)}
-                    <h4 className="font-semibold text-sm text-[#1a1a1a]">{buyer.buyerName}</h4>
-                  </div>
+                <div className="flex items-center gap-3 min-w-0">
                   <span
-                    className={`inline-flex items-center px-1.5 py-0.5 rounded-sm text-[11px] font-medium ${
-                      buyer.marginPct >= 35
-                        ? 'bg-[#d9f3e1] text-[#0d5220]'
-                        : buyer.marginPct >= 20
-                        ? 'bg-[#dcecfa] text-[#004480]'
-                        : 'bg-[#ffe8d4] text-[#793400]'
+                    className={`w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center shrink-0 tabular-nums ${getRankBadgeClass(
+                      buyer.rank
+                    )}`}
+                  >
+                    {buyer.rank}
+                  </span>
+
+                  <div className="min-w-0">
+                    <div className="text-xs sm:text-sm font-bold text-[var(--ink-primary)] truncate">
+                      {buyer.buyerName}
+                    </div>
+                    <a
+                      href={waUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--ink-muted)] hover:text-[var(--ink-primary)] mt-0.5"
+                    >
+                      <MessageCircle className="w-3 h-3" />
+                      <span>{buyer.buyerPhone}</span>
+                    </a>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between lg:justify-end gap-3 sm:gap-5">
+                  <span className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] font-bold text-[var(--ink-primary)] tabular-nums">
+                    {buyer.totalOrders}x • {buyer.totalPcs.toLocaleString('id-ID')} pcs
+                  </span>
+
+                  <div className="text-right">
+                    <div className="text-[10px] font-semibold text-[var(--ink-muted)]">
+                      Omzet
+                    </div>
+                    <div className="text-xs font-bold text-[var(--ink-primary)] tabular-nums">
+                      {formatRp(buyer.totalOmzet)}
+                    </div>
+                  </div>
+
+                  <div className="text-right hidden sm:block">
+                    <div className="text-[10px] font-semibold text-[var(--ink-muted)]">
+                      HPP
+                    </div>
+                    <div className="text-xs font-semibold text-[var(--ink-secondary)] tabular-nums">
+                      {formatRp(buyer.totalHpp)}
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="text-[10px] font-semibold text-[var(--ink-muted)]">
+                      Laba Bersih
+                    </div>
+                    <div className="text-xs font-bold text-[var(--ink-profit)] tabular-nums">
+                      {formatRp(buyer.totalProfit)}
+                    </div>
+                  </div>
+
+                  <span
+                    className={`px-2 py-1 rounded-lg text-[11px] font-bold tabular-nums ${
+                      buyer.marginPct >= 30
+                        ? 'bg-[#6EEB9A] text-[#14161D]'
+                        : buyer.marginPct >= 15
+                        ? 'bg-[#8EA6FF] text-[#14161D]'
+                        : 'bg-[#F29B76] text-[#14161D]'
                     }`}
                   >
-                    <TrendingUp className="w-3 h-3 mr-0.5" />
-                    {buyer.marginPct}% Margin
+                    {buyer.marginPct}%
                   </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs bg-[#f6f5f4] p-2.5 rounded-md">
-                  <div>
-                    <span className="text-[11px] text-[#787671]">Pesanan / Pcs:</span>
-                    <p className="font-medium text-[#1a1a1a]">{buyer.totalOrders}x • {buyer.totalPcs.toLocaleString('id-ID')} pcs</p>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-[#787671]">Omzet:</span>
-                    <p className="font-medium text-[#1a1a1a]">{formatRp(buyer.totalOmzet)}</p>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-[#787671]">Total HPP:</span>
-                    <p className="text-[#787671]">{formatRp(buyer.totalHpp)}</p>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-[#787671]">Laba Bersih:</span>
-                    <p className="font-bold text-[#0d5220]">{formatRp(buyer.totalProfit)}</p>
-                  </div>
-                </div>
-
-                <div className="pt-1 flex items-center justify-between">
-                  <a
-                    href={waUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-emerald-700 hover:underline min-h-[36px] py-1"
-                  >
-                    <MessageCircle className="w-4 h-4 text-emerald-600" />
-                    <span>{buyer.buyerPhone}</span>
-                  </a>
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
-
-      {/* Desktop Table View (>= 768px) */}
-      <div className="hidden md:block overflow-x-auto rounded-md border border-[#e5e3df]">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-[#f6f5f4] text-[#787671] font-medium uppercase tracking-wider border-b border-[#e5e3df]">
-            <tr>
-              <th className="py-2.5 px-3 text-center w-12">Rank</th>
-              <th className="py-2.5 px-3">Pelanggan</th>
-              <th className="py-2.5 px-3 text-center">Pesanan</th>
-              <th className="py-2.5 px-3 text-right">Total Pcs</th>
-              <th className="py-2.5 px-3 text-right">Total Omzet</th>
-              <th className="py-2.5 px-3 text-right">Total HPP</th>
-              <th className="py-2.5 px-3 text-right font-semibold text-[#1a1a1a]">Laba Bersih</th>
-              <th className="py-2.5 px-3 text-center">Margin %</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#e5e3df]">
-            {filteredBuyers.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="py-8 text-center text-[#787671]">
-                  Pelanggan tidak ditemukan.
-                </td>
-              </tr>
-            ) : (
-              filteredBuyers.map((buyer) => {
-                const cleanPhone = buyer.buyerPhone.replace(/\D/g, '');
-                const waNumber = cleanPhone.startsWith('0')
-                  ? `62${cleanPhone.slice(1)}`
-                  : cleanPhone;
-                const waUrl = `https://wa.me/${waNumber}?text=Halo%20${encodeURIComponent(
-                  buyer.buyerName
-                )},%20terima%20kasih%20telah%20menjadi%20pelanggan%20setia%20di%20eganci`;
-
-                return (
-                  <tr
-                    key={buyer.buyerName}
-                    className="hover:bg-[#f6f5f4] transition-colors"
-                  >
-                    <td className="py-2.5 px-3 text-center">
-                      <div className="flex justify-center">{getRankBadge(buyer.rank)}</div>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <div className="font-medium text-[#1a1a1a]">{buyer.buyerName}</div>
-                      <a
-                        href={waUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] text-emerald-700 hover:underline mt-0.5 min-h-[36px] py-1"
-                      >
-                        <MessageCircle className="w-3 h-3 text-emerald-600" />
-                        <span>{buyer.buyerPhone}</span>
-                      </a>
-                    </td>
-                    <td className="py-2.5 px-3 text-center font-medium text-[#37352f]">
-                      {buyer.totalOrders}x
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-medium text-[#37352f]">
-                      {buyer.totalPcs.toLocaleString('id-ID')} pcs
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-medium text-[#37352f]">
-                      {formatRp(buyer.totalOmzet)}
-                    </td>
-                    <td className="py-2.5 px-3 text-right text-[#787671]">
-                      {formatRp(buyer.totalHpp)}
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-semibold text-[#0d5220]">
-                      {formatRp(buyer.totalProfit)}
-                    </td>
-                    <td className="py-2.5 px-3 text-center">
-                      <span
-                        className={`inline-flex items-center px-1.5 py-0.2 rounded-sm text-[11px] font-medium ${
-                          buyer.marginPct >= 35
-                            ? 'bg-[#d9f3e1] text-[#0d5220]'
-                            : buyer.marginPct >= 20
-                            ? 'bg-[#dcecfa] text-[#004480]'
-                            : 'bg-[#ffe8d4] text-[#793400]'
-                        }`}
-                      >
-                        <TrendingUp className="w-3 h-3 mr-0.5" />
-                        {buyer.marginPct}%
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+          })}
+        </div>
+      )}
     </div>
   );
 }
