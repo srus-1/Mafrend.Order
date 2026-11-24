@@ -7,6 +7,7 @@ import React, {
   useState,
   useCallback,
   useMemo,
+  useRef,
 } from 'react';
 import {
   Order,
@@ -25,7 +26,6 @@ import {
   getSupabaseConfigStatus,
 } from '@/lib/supabase';
 import { calculateHPP, calculateMargin } from '@/lib/utils';
-
 
 /**
  * Timezone-safe month extraction helper using string slicing (YYYY-MM).
@@ -99,6 +99,7 @@ const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
 export function OrderProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([]);
+  const ordersRef = useRef<Order[]>(orders);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterTab, setFilterTab] = useState<FilterTab>('ALL');
@@ -110,6 +111,10 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [selectedMonthState, setSelectedMonthState] = useState<string>('');
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    ordersRef.current = orders;
+  }, [orders]);
 
   const clearError = useCallback(() => setError(null), []);
 
@@ -143,7 +148,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Initial load: async with unmount guard (eliminates react-hooks/set-state-in-effect line 64)
+  // Initial load + reload on auth session change
   useEffect(() => {
     let isMounted = true;
 
@@ -173,14 +178,21 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    loadInitialOrders();
+    void loadInitialOrders();
+
+    const handleAuthChange = () => {
+      if (isMounted) {
+        void loadInitialOrders();
+      }
+    };
+    window.addEventListener('mafrend:auth-changed', handleAuthChange);
 
     return () => {
       isMounted = false;
+      window.removeEventListener('mafrend:auth-changed', handleAuthChange);
     };
   }, [configStatus.isConfigured]);
 
-  // Derive activeDrawerOrder from orders and activeDrawerOrderId (eliminates react-hooks/set-state-in-effect line 73)
   const activeDrawerOrder = useMemo(() => {
     if (!activeDrawerOrderId) return null;
     return orders.find((o) => o.id === activeDrawerOrderId) ?? null;
@@ -200,12 +212,10 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     setIsFormModalOpen(true);
   }, []);
 
-  // 1-frame optimistic mutations with automatic rollback on error
+  // Concurrent-safe optimistic mutations using functional state updaters + per-entity rollbacks
 
-  // a) createOrder: optimistic prepend, background commit, rollback on error
   const handleCreateOrder = useCallback(
     async (orderData: CreateOrderInput): Promise<Order> => {
-      const previousOrders = orders;
       const now = new Date();
       const safeQty = Math.max(1, orderData.qty || 1);
       const safePrice = Math.max(0, orderData.pricePerPcs || 0);
@@ -227,9 +237,10 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
       const tempId = `opt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const shortYear = String(now.getFullYear()).slice(-2);
+      const seqHint = ordersRef.current.length + 1;
       const optimisticOrder: Order = {
         id: tempId,
-        orderNumber: `MF${shortYear}${String(previousOrders.length + 1).padStart(3, '0')}`,
+        orderNumber: `MF${shortYear}${String(seqHint).padStart(3, '0')}`,
         orderDate: orderData.orderDate || now.toISOString().split('T')[0],
         deadline: orderData.deadline,
         buyerName: orderData.buyerName,
@@ -253,136 +264,139 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         updatedAt: now.toISOString(),
       };
 
-      // 1. Frame 0: Immediate optimistic prepend and re-index queue
-      setOrders([
+      setOrders((prev) => [
         optimisticOrder,
-        ...previousOrders.map((o) => ({
+        ...prev.map((o) => ({
           ...o,
           queueOrder: (o.queueOrder || 0) + 1,
         })),
       ]);
 
       try {
-        // 2. Background async commit to Supabase
         const committed = await Promise.resolve(orderService.createOrder(orderData));
-        // Reconcile optimistic order with committed remote order
-        setOrders((current) =>
-          current.map((o) => (o.id === tempId ? committed : o))
-        );
+        setOrders((prev) => prev.map((o) => (o.id === tempId ? committed : o)));
         return committed;
       } catch (err: unknown) {
-        // 3. Automatic rollback on error
-        setOrders(previousOrders);
+        setOrders((prev) =>
+          prev
+            .filter((o) => o.id !== tempId)
+            .map((o) => ({
+              ...o,
+              queueOrder: Math.max(1, (o.queueOrder || 1) - 1),
+            }))
+        );
         const msg = err instanceof Error ? err.message : 'Gagal membuat pesanan baru.';
         setError(`Gagal membuat pesanan. ${msg}`);
         throw err;
       }
     },
-    [orders]
+    []
   );
 
-  // b) updateOrder: optimistic update, background commit, rollback on error
   const handleUpdateOrder = useCallback(
     async (id: string, updates: Partial<Order>): Promise<Order | null> => {
-      const previousOrders = orders;
-      const target = previousOrders.find((o) => o.id === id);
-      if (!target) return null;
+      const targetSnapshot = ordersRef.current.find((o) => o.id === id);
+      if (!targetSnapshot) return null;
 
-      const qty = updates.qty !== undefined ? updates.qty : target.qty;
-      const pricePerPcs =
-        updates.pricePerPcs !== undefined ? updates.pricePerPcs : target.pricePerPcs;
-      const omzet = qty * pricePerPcs;
+      const computeUpdatedOrder = (base: Order): Order => {
+        const qty = updates.qty !== undefined ? updates.qty : base.qty;
+        const pricePerPcs =
+          updates.pricePerPcs !== undefined ? updates.pricePerPcs : base.pricePerPcs;
+        const omzet = qty * pricePerPcs;
 
-      let hppBreakdown = target.hppBreakdown;
-      if (updates.hppBreakdown) {
-        hppBreakdown = calculateHPP(updates.hppBreakdown, qty);
-      } else if (updates.qty !== undefined) {
-        hppBreakdown = calculateHPP(target.hppBreakdown, qty);
-      }
+        let hppBreakdown = base.hppBreakdown;
+        if (updates.hppBreakdown) {
+          hppBreakdown = calculateHPP(updates.hppBreakdown, qty);
+        } else if (updates.qty !== undefined) {
+          hppBreakdown = calculateHPP(base.hppBreakdown, qty);
+        }
 
-      const { profit, marginPct } = calculateMargin(omzet, hppBreakdown.totalHpp);
-      const paymentStatus = updates.paymentStatus || target.paymentStatus;
-      let dpAmount =
-        updates.dpAmount !== undefined ? updates.dpAmount : target.dpAmount;
-      let remainingPayment = 0;
+        const { profit, marginPct } = calculateMargin(omzet, hppBreakdown.totalHpp);
+        const paymentStatus = updates.paymentStatus || base.paymentStatus;
+        let dpAmount =
+          updates.dpAmount !== undefined ? updates.dpAmount : base.dpAmount;
+        let remainingPayment = 0;
 
-      if (paymentStatus === 'LUNAS') {
-        dpAmount = omzet;
-        remainingPayment = 0;
-      } else if (paymentStatus === 'DP') {
-        remainingPayment = Math.max(0, omzet - dpAmount);
-      } else {
-        dpAmount = 0;
-        remainingPayment = omzet;
-      }
+        if (paymentStatus === 'LUNAS') {
+          dpAmount = omzet;
+          remainingPayment = 0;
+        } else if (paymentStatus === 'DP') {
+          remainingPayment = Math.max(0, omzet - dpAmount);
+        } else {
+          dpAmount = 0;
+          remainingPayment = omzet;
+        }
 
-      const optimisticUpdated: Order = {
-        ...target,
-        ...updates,
-        qty,
-        pricePerPcs,
-        omzet,
-        hppBreakdown,
-        profit,
-        marginPct,
-        paymentStatus,
-        dpAmount,
-        remainingPayment,
-        updatedAt: new Date().toISOString(),
+        return {
+          ...base,
+          ...updates,
+          qty,
+          pricePerPcs,
+          omzet,
+          hppBreakdown,
+          profit,
+          marginPct,
+          paymentStatus,
+          dpAmount,
+          remainingPayment,
+          updatedAt: new Date().toISOString(),
+        };
       };
 
-      // 1. Frame 0: Synchronous 1-frame state update
-      setOrders(previousOrders.map((o) => (o.id === id ? optimisticUpdated : o)));
+      const optimisticUpdated = computeUpdatedOrder(targetSnapshot);
+
+      setOrders((prev) =>
+        prev.map((o) => (o.id === id ? computeUpdatedOrder(o) : o))
+      );
 
       try {
-        // 2. Background async commit
         const remote = await Promise.resolve(orderService.updateOrder(id, updates));
         if (remote) {
-          setOrders((current) =>
-            current.map((o) => (o.id === id ? remote : o))
-          );
+          setOrders((prev) => prev.map((o) => (o.id === id ? remote : o)));
           return remote;
         }
         return optimisticUpdated;
       } catch (err: unknown) {
-        // 3. Automatic rollback on error
-        setOrders(previousOrders);
+        setOrders((prev) =>
+          prev.map((o) => (o.id === id ? targetSnapshot : o))
+        );
         const msg = err instanceof Error ? err.message : 'Gagal memperbarui pesanan.';
         setError(`Gagal memperbarui pesanan. ${msg}`);
         throw err;
       }
     },
-    [orders]
+    []
   );
 
-  // c) deleteOrder: optimistic remove, background commit, rollback on error
-  const handleDeleteOrder = useCallback(
-    async (id: string): Promise<boolean> => {
-      const previousOrders = orders;
-      if (activeDrawerOrderId === id) {
-        setActiveDrawerOrderId(null);
+  const handleDeleteOrder = useCallback(async (id: string): Promise<boolean> => {
+    const currentList = ordersRef.current;
+    const deletedIndex = currentList.findIndex((o) => o.id === id);
+    const deletedSnapshot = deletedIndex >= 0 ? currentList[deletedIndex] : null;
+
+    setActiveDrawerOrderId((prevId) => (prevId === id ? null : prevId));
+    setSelectedOrderIds((prev) => prev.filter((orderId) => orderId !== id));
+    setOrders((prev) => prev.filter((o) => o.id !== id));
+
+    try {
+      const success = await Promise.resolve(orderService.deleteOrder(id));
+      return success;
+    } catch (err: unknown) {
+      if (deletedSnapshot) {
+        setOrders((prev) => {
+          if (prev.some((o) => o.id === id)) return prev;
+          const restored = [...prev];
+          const insertIdx =
+            deletedIndex >= 0 ? Math.min(deletedIndex, restored.length) : 0;
+          restored.splice(insertIdx, 0, deletedSnapshot);
+          return restored;
+        });
       }
-      setSelectedOrderIds((prev) => prev.filter((orderId) => orderId !== id));
+      const msg = err instanceof Error ? err.message : 'Gagal menghapus pesanan.';
+      setError(`Gagal menghapus pesanan. ${msg}`);
+      throw err;
+    }
+  }, []);
 
-      // 1. Frame 0: Synchronous removal
-      setOrders(previousOrders.filter((o) => o.id !== id));
-
-      try {
-        // 2. Background commit
-        const success = await Promise.resolve(orderService.deleteOrder(id));
-        return success;
-      } catch (err: unknown) {
-        // 3. Automatic rollback on error
-        setOrders(previousOrders);
-        const msg = err instanceof Error ? err.message : 'Gagal menghapus pesanan.';
-        setError(`Gagal menghapus pesanan. ${msg}`);
-        throw err;
-      }
-    },
-    [orders, activeDrawerOrderId]
-  );
-
-  // d) updateProcessStatus & updatePaymentStatus: optimistic update, background commit, rollback
   const handleUpdateProcessStatus = useCallback(
     async (id: string, status: ProcessStatus): Promise<void> => {
       await handleUpdateOrder(id, { processStatus: status });
@@ -397,88 +411,95 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     [handleUpdateOrder]
   );
 
-  // e) reorderQueue: optimistic reorder & queue_index update, background commit, rollback on error
-  const handleReorderQueue = useCallback(
-    async (orderedIds: string[]): Promise<void> => {
-      const previousOrders = orders;
+  const handleReorderQueue = useCallback(async (orderedIds: string[]): Promise<void> => {
+    const prevPositions = new Map(
+      ordersRef.current.map((o, idx) => [o.id, { queueOrder: o.queueOrder, idx }])
+    );
 
-      // 1. Frame 0: Synchronously reorder array and assign queueOrder 1..N
-      const idMap = new Map<string, number>();
-      orderedIds.forEach((id, index) => {
-        idMap.set(id, index + 1);
-      });
+    const idMap = new Map<string, number>();
+    orderedIds.forEach((id, index) => {
+      idMap.set(id, index + 1);
+    });
 
-      const reordered = [...previousOrders].sort((a, b) => {
-        const orderA = idMap.get(a.id) ?? 9999;
-        const orderB = idMap.get(b.id) ?? 9999;
-        return orderA - orderB;
-      }).map((item, idx) => ({
-        ...item,
-        queueOrder: idx + 1,
-      }));
+    setOrders((prev) =>
+      [...prev]
+        .sort((a, b) => (idMap.get(a.id) ?? 9999) - (idMap.get(b.id) ?? 9999))
+        .map((item, idx) => ({
+          ...item,
+          queueOrder: idx + 1,
+        }))
+    );
 
-      setOrders(reordered);
+    try {
+      await Promise.resolve(orderService.reorderQueue(orderedIds));
+    } catch (err: unknown) {
+      setOrders((prev) =>
+        [...prev]
+          .map((o) => {
+            const saved = prevPositions.get(o.id);
+            return saved ? { ...o, queueOrder: saved.queueOrder } : o;
+          })
+          .sort((a, b) => {
+            const idxA = prevPositions.get(a.id)?.idx ?? -1;
+            const idxB = prevPositions.get(b.id)?.idx ?? -1;
+            return idxA - idxB;
+          })
+      );
+      const msg = err instanceof Error ? err.message : 'Gagal menyimpan urutan antrean.';
+      setError(`Gagal menyimpan urutan antrean. ${msg}`);
+      throw err;
+    }
+  }, []);
 
-      try {
-        // 2. Background async commit
-        await Promise.resolve(orderService.reorderQueue(orderedIds));
-      } catch (err: unknown) {
-        // 3. Automatic rollback on error
-        setOrders(previousOrders);
-        const msg = err instanceof Error ? err.message : 'Gagal menyimpan urutan antrean.';
-        setError(`Gagal menyimpan urutan antrean. ${msg}`);
-        throw err;
-      }
-    },
-    [orders]
-  );
-
-  // f) uploadDesignFile, toggleDesignReady, deleteDesignFile: optimistic update, background commit, rollback on error
   const handleAddDesignFile = useCallback(
     async (orderId: string, file: DesignFile): Promise<DesignFile | null> => {
-      const previousOrders = orders;
-
-      // 1. Frame 0: Optimistically attach file to order
-      setOrders(
-        previousOrders.map((o) => {
-          if (o.id !== orderId) return o;
-          return {
-            ...o,
-            designFiles: [...(o.designFiles || []), file],
-          };
-        })
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? { ...o, designFiles: [...(o.designFiles || []), file] }
+            : o
+        )
       );
 
       try {
-        // 2. Background commit
         const remote = await Promise.resolve(orderService.addDesignFile(orderId, file));
         if (remote) {
-          setOrders((current) =>
-            current.map((o) => {
-              if (o.id !== orderId) return o;
-              return {
-                ...o,
-                designFiles: o.designFiles.map((f) => (f.id === file.id ? remote : f)),
-              };
-            })
+          setOrders((prev) =>
+            prev.map((o) =>
+              o.id === orderId
+                ? {
+                    ...o,
+                    designFiles: o.designFiles.map((f) =>
+                      f.id === file.id ? remote : f
+                    ),
+                  }
+                : o
+            )
           );
           return remote;
         }
         return file;
       } catch (err: unknown) {
-        // 3. Automatic rollback on error
-        setOrders(previousOrders);
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId
+              ? {
+                  ...o,
+                  designFiles: o.designFiles.filter((f) => f.id !== file.id),
+                }
+              : o
+          )
+        );
         const msg = err instanceof Error ? err.message : 'Gagal menambahkan file desain.';
         setError(`Gagal menambahkan file desain. ${msg}`);
         throw err;
       }
     },
-    [orders]
+    []
   );
 
   const handleUploadDesignFile = useCallback(
     async (orderId: string, file: File): Promise<DesignFile | null> => {
-      const previousOrders = orders;
       const ext = file.name.split('.').pop()?.toUpperCase() || 'FILE';
       const fileUrl = URL.createObjectURL(file);
       const tempFile: DesignFile = {
@@ -493,105 +514,151 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         uploadedAt: new Date().toISOString(),
       };
 
-      // 1. Frame 0: Optimistic prepend
-      setOrders(
-        previousOrders.map((o) => {
-          if (o.id !== orderId) return o;
-          return {
-            ...o,
-            designFiles: [...(o.designFiles || []), tempFile],
-          };
-        })
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? { ...o, designFiles: [...(o.designFiles || []), tempFile] }
+            : o
+        )
       );
 
       try {
-        if (typeof orderService.uploadDesignFile === 'function') {
+        if (configStatus.isConfigured && typeof orderService.uploadDesignFile === 'function') {
           const remote = await orderService.uploadDesignFile(orderId, file);
-          setOrders((current) =>
-            current.map((o) => {
-              if (o.id !== orderId) return o;
-              return {
-                ...o,
-                designFiles: o.designFiles.map((f) => (f.id === tempFile.id ? remote : f)),
-              };
-            })
+          URL.revokeObjectURL(fileUrl);
+          setOrders((prev) =>
+            prev.map((o) =>
+              o.id === orderId
+                ? {
+                    ...o,
+                    designFiles: o.designFiles.map((f) =>
+                      f.id === tempFile.id ? remote : f
+                    ),
+                  }
+                : o
+            )
           );
           return remote;
         }
         return tempFile;
       } catch (err: unknown) {
-        setOrders(previousOrders);
+        URL.revokeObjectURL(fileUrl);
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId
+              ? {
+                  ...o,
+                  designFiles: o.designFiles.filter((f) => f.id !== tempFile.id),
+                }
+              : o
+          )
+        );
         const msg = err instanceof Error ? err.message : 'Gagal mengunggah file desain.';
         setError(`Gagal mengunggah file desain. ${msg}`);
         throw err;
       }
     },
-    [orders]
+    [configStatus.isConfigured]
   );
 
   const handleToggleDesignReady = useCallback(
     async (orderId: string, designId: string): Promise<boolean> => {
-      const previousOrders = orders;
+      const targetOrder = ordersRef.current.find((o) => o.id === orderId);
+      const previousReady = targetOrder?.designFiles.find(
+        (f) => f.id === designId
+      )?.isReadyToPrint;
+      const nextReady = !previousReady;
 
-      // 1. Frame 0: Synchronously toggle print readiness
-      setOrders(
-        previousOrders.map((o) => {
-          if (o.id !== orderId) return o;
-          return {
-            ...o,
-            designFiles: o.designFiles.map((f) =>
-              f.id === designId ? { ...f, isReadyToPrint: !f.isReadyToPrint } : f
-            ),
-          };
-        })
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? {
+                ...o,
+                designFiles: o.designFiles.map((f) =>
+                  f.id === designId ? { ...f, isReadyToPrint: nextReady } : f
+                ),
+              }
+            : o
+        )
       );
 
       try {
-        // 2. Background commit
-        const success = await Promise.resolve(orderService.toggleDesignReady(orderId, designId));
+        const success = await Promise.resolve(
+          orderService.toggleDesignReady(orderId, designId, nextReady)
+        );
         return success;
       } catch (err: unknown) {
-        // 3. Automatic rollback on error
-        setOrders(previousOrders);
-        const msg = err instanceof Error ? err.message : 'Gagal memperbarui status file siap cetak.';
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId
+              ? {
+                  ...o,
+                  designFiles: o.designFiles.map((f) =>
+                    f.id === designId
+                      ? { ...f, isReadyToPrint: Boolean(previousReady) }
+                      : f
+                  ),
+                }
+              : o
+          )
+        );
+        const msg =
+          err instanceof Error
+            ? err.message
+            : 'Gagal memperbarui status file siap cetak.';
         setError(`Gagal memperbarui status file cetak. ${msg}`);
         throw err;
       }
     },
-    [orders]
+    []
   );
 
   const handleDeleteDesignFile = useCallback(
     async (orderId: string, designId: string): Promise<boolean> => {
-      const previousOrders = orders;
+      const targetOrder = ordersRef.current.find((o) => o.id === orderId);
+      const fileIndex =
+        targetOrder?.designFiles.findIndex((f) => f.id === designId) ?? -1;
+      const deletedFile =
+        fileIndex >= 0 && targetOrder ? targetOrder.designFiles[fileIndex] : null;
 
-      // 1. Frame 0: Synchronously remove design file
-      setOrders(
-        previousOrders.map((o) => {
-          if (o.id !== orderId) return o;
-          return {
-            ...o,
-            designFiles: o.designFiles.filter((f) => f.id !== designId),
-          };
-        })
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? {
+                ...o,
+                designFiles: o.designFiles.filter((f) => f.id !== designId),
+              }
+            : o
+        )
       );
 
       try {
-        // 2. Background commit
-        const success = await Promise.resolve(orderService.deleteDesignFile(orderId, designId));
+        const success = await Promise.resolve(
+          orderService.deleteDesignFile(orderId, designId)
+        );
         return success;
       } catch (err: unknown) {
-        // 3. Automatic rollback on error
-        setOrders(previousOrders);
+        if (deletedFile) {
+          setOrders((prev) =>
+            prev.map((o) => {
+              if (o.id !== orderId) return o;
+              if (o.designFiles.some((f) => f.id === designId)) return o;
+              const nextFiles = [...o.designFiles];
+              const idx =
+                fileIndex >= 0 ? Math.min(fileIndex, nextFiles.length) : nextFiles.length;
+              nextFiles.splice(idx, 0, deletedFile);
+              return { ...o, designFiles: nextFiles };
+            })
+          );
+        }
         const msg = err instanceof Error ? err.message : 'Gagal menghapus file desain.';
         setError(`Gagal menghapus file desain. ${msg}`);
         throw err;
       }
     },
-    [orders]
+    []
   );
 
-  // Milestone 2: Available months derived from all orders (newest first)
   const availableMonths = useMemo(() => {
     const set = new Set<string>();
     orders.forEach((o) => {
@@ -601,32 +668,36 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     return Array.from(set).sort((a, b) => b.localeCompare(a));
   }, [orders]);
 
-  // Client-only current month resolved in useEffect to comply with Next.js 16 cacheComponents prerendering
   const [clientCurrentMonth, setClientCurrentMonth] = useState<string>('');
 
   useEffect(() => {
-    const now = new Date();
-    setClientCurrentMonth(
-      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-    );
+    let isMounted = true;
+    async function initMonth() {
+      await Promise.resolve();
+      if (!isMounted) return;
+      const now = new Date();
+      setClientCurrentMonth(
+        `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+      );
+    }
+    void initMonth();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Default month: current month if in available months, else latest available month, else client current month
   const defaultMonth = useMemo(() => {
     if (clientCurrentMonth && availableMonths.includes(clientCurrentMonth)) {
       return clientCurrentMonth;
     }
     if (availableMonths.length > 0) {
-      return availableMonths[0]; // latest available month with data
+      return availableMonths[0];
     }
     return clientCurrentMonth;
   }, [availableMonths, clientCurrentMonth]);
 
   const selectedMonth = selectedMonthState || defaultMonth;
 
-  // Dynamic active orders for dashboard:
-  // If 1+ orders selected via checkbox -> calculate strictly over selected orders (Dynamic Override)
-  // Otherwise -> calculate strictly over orders matching selectedMonth (Monthly Scoping)
   const activeOrdersForDashboard = useMemo(() => {
     if (selectedOrderIds.length > 0) {
       const selectedSet = new Set(selectedOrderIds);
@@ -635,8 +706,6 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     return orders.filter((o) => getOrderMonth(o) === selectedMonth);
   }, [orders, selectedOrderIds, selectedMonth]);
 
-  // Scoped metrics and buyer summaries fed by activeOrdersForDashboard
-  // Profit remains strictly computed from orders (omzet - totalHpp), completely independent of Capex/Materials
   const metrics = useMemo(
     () => orderService.getDashboardMetrics(activeOrdersForDashboard),
     [activeOrdersForDashboard]
@@ -650,7 +719,6 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     [activeOrdersForDashboard]
   );
 
-  // Context value memoization
   const contextValue = useMemo<OrderContextType>(
     () => ({
       orders,

@@ -9,7 +9,11 @@ export function escapeCSVField(value: string | number | null | undefined): strin
   if (value === null || value === undefined) {
     return '';
   }
-  const str = String(value).trim();
+  let str = String(value).trim();
+  // Prevent CSV/Excel formula injection on untrusted string fields while keeping pure numbers intact
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
   if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     return `"${str.replace(/"/g, '""')}"`;
   }
@@ -328,7 +332,7 @@ export function exportOrdersToExcel(orders: Order[], periodLabel = 'Semua Period
 
   const body = `
   <table>
-    <tr><td colspan="19" class="title">LAPORAN PESANAN OWNER — EGANCI (MAFREND.ORDER)</td></tr>
+    <tr><td colspan="19" class="title">LAPORAN PESANAN OWNER - MAFREND.STUDIO</td></tr>
     <tr><td colspan="19" class="subtitle">Periode / Filter: ${escapeHtml(periodLabel)} | Total Data: ${safeOrders.length} Pesanan</td></tr>
     <tr><td colspan="19"></td></tr>
     <thead>
@@ -398,7 +402,7 @@ export function exportCapexToExcel(capex: CapexEntry[], periodLabel = 'Semua Per
 
   const body = `
   <table>
-    <tr><td colspan="6" class="title">LAPORAN BELANJA MODAL (CAPEX) OWNER — EGANCI</td></tr>
+    <tr><td colspan="6" class="title">LAPORAN BELANJA MODAL (CAPEX) OWNER - MAFREND.STUDIO</td></tr>
     <tr><td colspan="6" class="subtitle">Periode: ${escapeHtml(periodLabel)} | Total Transaksi: ${safeCapex.length} Item</td></tr>
     <tr><td colspan="6"></td></tr>
     <thead>
@@ -455,7 +459,7 @@ export function exportRawMaterialsToExcel(
 
   const body = `
   <table>
-    <tr><td colspan="10" class="title">LAPORAN BAHAN BAKU BERULANG OWNER — EGANCI</td></tr>
+    <tr><td colspan="10" class="title">LAPORAN BAHAN BAKU BERULANG OWNER - MAFREND.STUDIO</td></tr>
     <tr><td colspan="10" class="subtitle">Periode: ${escapeHtml(periodLabel)} | Total Nota: ${safeMaterials.length} Item</td></tr>
     <tr><td colspan="10"></td></tr>
     <thead>
@@ -627,7 +631,7 @@ export function exportOrdersToPDF(
   <div class="header">
     <div>
       <h1>${escapeHtml(reportTitle)}</h1>
-      <p>eganci (Mafrend.Order) — Dokumen Resmi Owner | Filter: ${escapeHtml(periodLabel)}</p>
+      <p>Mafrend.Studio - Dokumen Resmi Owner | Filter: ${escapeHtml(periodLabel)}</p>
     </div>
     <div style="text-align:right;font-size:10px;">
       <strong>Total Data: ${safeOrders.length} Pesanan</strong><br/>
@@ -687,7 +691,7 @@ export function exportOrdersToPDF(
     </tbody>
   </table>
   <div class="footer-note">
-    <span>Laporan Eksekutif Owner — eganci (Mafrend.Order)</span>
+    <span>Laporan Eksekutif Owner - Mafrend.Studio</span>
     <span>Gunakan opsi "Save as PDF" / "Simpan sebagai PDF" pada dialog cetak browser.</span>
   </div>`;
 
@@ -719,7 +723,7 @@ export function exportCapexToPDF(capex: CapexEntry[], periodLabel = 'Semua Perio
   <div class="header">
     <div>
       <h1>Laporan Belanja Modal (Capex) Owner</h1>
-      <p>eganci (Mafrend.Order) — Investasi Peralatan & Aset Workshop | Periode: ${escapeHtml(periodLabel)}</p>
+      <p>Mafrend.Studio - Investasi Peralatan & Aset Workshop | Periode: ${escapeHtml(periodLabel)}</p>
     </div>
     <div style="text-align:right;font-size:11px;">
       <strong>Total Capex: ${formatRpOwner(totalAmount)}</strong><br/>
@@ -747,7 +751,7 @@ export function exportCapexToPDF(capex: CapexEntry[], periodLabel = 'Semua Perio
     </tbody>
   </table>
   <div class="footer-note">
-    <span>Laporan Belanja Modal (Capex) Owner — eganci</span>
+    <span>Laporan Belanja Modal (Capex) Owner - Mafrend.Studio</span>
     <span>Pilih "Save as PDF" / "Simpan sebagai PDF" untuk menyimpan berkas PDF.</span>
   </div>`;
 
@@ -785,7 +789,7 @@ export function exportRawMaterialsToPDF(
   <div class="header">
     <div>
       <h1>Laporan Bahan Baku Berulang Owner</h1>
-      <p>eganci (Mafrend.Order) — Pasokan Rutin Workshop | Periode: ${escapeHtml(periodLabel)}</p>
+      <p>Mafrend.Studio - Pasokan Rutin Workshop | Periode: ${escapeHtml(periodLabel)}</p>
     </div>
     <div style="text-align:right;font-size:11px;">
       <strong>Total Bahan Baku: ${formatRpOwner(totalAmount)}</strong><br/>
@@ -816,7 +820,7 @@ export function exportRawMaterialsToPDF(
     </tbody>
   </table>
   <div class="footer-note">
-    <span>Laporan Bahan Baku Berulang Owner — eganci</span>
+    <span>Laporan Bahan Baku Berulang Owner - Mafrend.Studio</span>
     <span>Pilih "Save as PDF" / "Simpan sebagai PDF" untuk menyimpan berkas PDF.</span>
   </div>`;
 
