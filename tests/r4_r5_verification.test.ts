@@ -17,6 +17,12 @@ import {
   exportCapexToCSV,
   exportRawMaterialsToCSV,
 } from '../src/lib/csvExport';
+import {
+  buildOrdersXlsxBuffer,
+  buildCapexXlsxBuffer,
+  buildRawMaterialsXlsxBuffer,
+} from '../src/lib/excelExport';
+import ExcelJS from 'exceljs';
 import { formatMonthLabel } from '../src/lib/utils';
 import { Order } from '../src/types/order';
 import { CapexEntry, RawMaterialEntry } from '../src/types/capex';
@@ -495,6 +501,77 @@ describe('R1–R5 Comprehensive Verification Suite', () => {
       assert.ok(sql.includes('CREATE OR REPLACE FUNCTION public.reorder_orders_batch'));
       assert.ok(sql.includes('TO authenticated'));
       assert.ok(!/CREATE POLICY[\s\S]*?TO anon/i.test(sql));
+    });
+
+    test('T1-R5-04: Genuine .xlsx exports produce valid OOXML ZIP buffers readable by ExcelJS', async () => {
+      const ordersBuf = await buildOrdersXlsxBuffer([
+        {
+          id: 'ord-xlsx-1',
+          orderNumber: 'MF26001',
+          orderDate: '2026-11-20',
+          deadline: '2026-11-25',
+          buyerName: 'Studio Merdeka',
+          buyerPhone: '08123456789',
+          productName: 'Ganci Akrilik 2 Sisi',
+          specs: '3mm UV',
+          qty: 100,
+          pricePerPcs: 6500,
+          omzet: 650000,
+          hppBreakdown: {
+            bahanBaku: 1500,
+            tintaSablon: 600,
+            tenagaKerja: 700,
+            kemasan: 300,
+            overhead: 200,
+            totalHppPerPcs: 3300,
+            totalHpp: 330000,
+          },
+          profit: 320000,
+          marginPct: 49.2,
+          paymentStatus: 'LUNAS',
+          dpAmount: 650000,
+          remainingPayment: 0,
+          processStatus: 'SELESAI',
+          queueOrder: 1,
+          designFiles: [],
+          createdAt: '2026-11-20T08:00:00.000Z',
+          updatedAt: '2026-11-20T08:00:00.000Z',
+        },
+      ], 'November 2026');
+
+      const bytes = new Uint8Array(ordersBuf);
+      assert.equal(bytes[0], 0x50); // 'P'
+      assert.equal(bytes[1], 0x4b); // 'K' (valid ZIP/OOXML header)
+
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(ordersBuf);
+      const sheet = wb.getWorksheet('Laporan Pesanan');
+      assert.ok(sheet);
+      assert.equal(sheet.getRow(5).getCell(2).value, 'MF26001');
+      assert.equal(sheet.getRow(5).getCell(11).value, 650000);
+
+      const capexBuf = await buildCapexXlsxBuffer([], 'November 2026');
+      assert.equal(new Uint8Array(capexBuf)[0], 0x50);
+      const matBuf = await buildRawMaterialsXlsxBuffer([], 'November 2026');
+      assert.equal(new Uint8Array(matBuf)[0], 0x50);
+    });
+
+    test('T1-R5-05: UI uses CustomSelect everywhere (zero native <select>), no slash hint, and no static Baru badge', () => {
+      const filterSrc = fs.readFileSync(
+        path.resolve(process.cwd(), 'src/components/order/OrderFilterTabs.tsx'),
+        'utf-8'
+      );
+      const sidebarSrc = fs.readFileSync(
+        path.resolve(process.cwd(), 'src/components/layout/Sidebar.tsx'),
+        'utf-8'
+      );
+      const rowSrc = fs.readFileSync(
+        path.resolve(process.cwd(), 'src/components/order/OrderRowCard.tsx'),
+        'utf-8'
+      );
+      assert.ok(!filterSrc.includes('handleSlash'));
+      assert.ok(!sidebarSrc.includes("badge: 'new'"));
+      assert.ok(!rowSrc.includes('<select'));
     });
   });
 });

@@ -21,10 +21,6 @@ export { supabase, isSupabaseConfigured, getSupabaseConfigStatus, notifyIfAuthEr
 export * from './services/capexService';
 export * from './services/catalogService';
 
-// ============================================================================
-// Database Row Mapping Types (PostgreSQL snake_case <-> TypeScript camelCase)
-// ============================================================================
-
 export interface DbOrderRow {
   id: string;
   order_number: string;
@@ -197,10 +193,6 @@ async function resolveNextOrderCodeAndQueue(
     queueOrder: fallbackMaxQueue + 1,
   };
 }
-
-// ============================================================================
-// Authentic Supabase Order Service
-// ============================================================================
 
 export const orderService = {
   /**
@@ -667,10 +659,6 @@ export const orderService = {
 
     return true;
   },
-
-  // ============================================================================
-  // Pure Analytical Financial Metrics (Deterministic In-Memory Computations)
-  // ============================================================================
 
   getDashboardMetrics(orders: Order[]): DashboardMetrics {
     let totalPcs = 0;

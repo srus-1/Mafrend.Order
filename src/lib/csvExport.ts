@@ -234,11 +234,6 @@ export function downloadCSVFile(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
-// ============================================================================
-// OWNER REPORTS: EXCEL (.xls) & PDF (.pdf) GENERATORS
-// Designed for Business Owner review (includes full descriptions, Rupiah formatting, & summary totals)
-// ============================================================================
-
 function escapeHtml(val: string | number | null | undefined): string {
   if (val === null || val === undefined) return '';
   return String(val)
@@ -515,9 +510,21 @@ export function downloadExcelFile(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
-/**
- * Helper to render and trigger a print/save-to-PDF dialog via a hidden iframe (never blocked by popup blockers).
- */
+const PDF_PAYMENT_LABELS: Record<string, { label: string; cls: string }> = {
+  LUNAS: { label: 'Lunas', cls: 'pill-mint' },
+  DP: { label: 'DP', cls: 'pill-blue' },
+  BELUM_LUNAS: { label: 'Belum Lunas', cls: 'pill-coral' },
+};
+
+const PDF_PROCESS_LABELS: Record<string, { label: string; cls: string }> = {
+  ANTREAN: { label: 'Antrean 1/6', cls: 'pill-blue' },
+  SETTING_DESAIN: { label: 'Setting 2/6', cls: 'pill-blue' },
+  PROSES_CETAK: { label: 'Cetak 3/6', cls: 'pill-blue' },
+  FINISHING: { label: 'Finishing 4/6', cls: 'pill-amber' },
+  SIAP_KIRIM: { label: 'Siap Kirim 5/6', cls: 'pill-coral' },
+  SELESAI: { label: 'Selesai 6/6', cls: 'pill-mint' },
+};
+
 function triggerPrintPDFDocument(documentTitle: string, bodyContent: string): void {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
@@ -529,28 +536,114 @@ function triggerPrintPDFDocument(documentTitle: string, bodyContent: string): vo
   <style>
     @page { size: A4 landscape; margin: 10mm; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #1a1a1a; margin: 0; padding: 8px; font-size: 10px; line-height: 1.4; }
-    .header { background: #0a1530; color: #ffffff; padding: 14px 18px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .header h1 { margin: 0; font-size: 16px; font-weight: 700; }
-    .header p { margin: 3px 0 0; font-size: 11px; color: #d6b6f6; }
-    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
-    .kpi-card { padding: 10px 12px; border-radius: 8px; border: 1px solid #d6d3cd; }
-    .kpi-sky { background: #dcecfa; }
-    .kpi-lavender { background: #e6e0f5; }
-    .kpi-mint { background: #d9f3e1; }
-    .kpi-peach { background: #ffe8d4; }
-    .kpi-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #37352f; }
-    .kpi-val { font-size: 14px; font-weight: 800; color: #1a1a1a; margin-top: 3px; }
-    .kpi-sub { font-size: 9px; color: #37352f; margin-top: 2px; }
-    table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
-    th { background: #0a1530; color: #ffffff; padding: 6px 7px; text-align: left; font-weight: 700; border: 1px solid #1a2a52; }
-    td { padding: 5px 7px; border: 1px solid #d6d3cd; vertical-align: top; }
-    tr:nth-child(even) td { background: #fbfbfa; }
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: #14161D;
+      background: #FFFFFF;
+      margin: 0;
+      padding: 6px;
+      font-size: 10px;
+      line-height: 1.45;
+    }
+    .header {
+      background: #E5ECF6;
+      color: #14161D;
+      padding: 16px 20px;
+      border-radius: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .brand-row { display: flex; align-items: center; gap: 10px; }
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: #191D32;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: -0.02em;
+    }
+    .header h1 { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: -0.02em; color: #14161D; }
+    .header-meta { margin-top: 2px; font-size: 10px; font-weight: 600; color: #475569; }
+    .header-right { text-align: right; font-size: 10px; color: #475569; }
+    .header-right strong { color: #14161D; font-size: 12px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+    .kpi-card {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #F1F4FA;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .kpi-hero { background: #4638F5; color: #FFFFFF; }
+    .kpi-label { font-size: 9.5px; font-weight: 600; color: #475569; }
+    .kpi-hero .kpi-label { color: rgba(255,255,255,0.88); }
+    .kpi-val { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #14161D; }
+    .kpi-hero .kpi-val { color: #FFFFFF; }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 700;
+      color: #14161D;
+      white-space: nowrap;
+    }
+    .pill-mint { background: #6EEB9A; }
+    .pill-blue { background: #8EA6FF; }
+    .pill-amber { background: #F9DC7E; }
+    .pill-coral { background: #F29B76; }
+    .table-wrap {
+      background: #F8FAFD;
+      border-radius: 14px;
+      padding: 8px;
+    }
+    table { width: 100%; border-collapse: separate; border-spacing: 0 4px; font-size: 9.5px; }
+    th {
+      background: #E5ECF6;
+      color: #475569;
+      padding: 7px 8px;
+      text-align: left;
+      font-weight: 700;
+      font-size: 9px;
+    }
+    th:first-child { border-radius: 8px 0 0 8px; }
+    th:last-child { border-radius: 0 8px 8px 0; }
+    td {
+      background: #FFFFFF;
+      padding: 7px 8px;
+      vertical-align: top;
+      color: #14161D;
+    }
+    tbody tr:nth-child(even) td { background: #F1F4FA; }
+    td:first-child { border-radius: 8px 0 0 8px; }
+    td:last-child { border-radius: 0 8px 8px 0; }
     .right { text-align: right; font-variant-numeric: tabular-nums; }
     .bold { font-weight: 700; }
-    .profit { color: #0d5220; font-weight: 700; }
-    .total-row td { background: #e6e0f5 !important; font-weight: 800; border-top: 2px solid #0a1530; font-size: 10px; }
-    .footer-note { margin-top: 10px; font-size: 9px; color: #787671; display: flex; justify-content: space-between; }
+    .muted { color: #475569; font-size: 8.5px; }
+    .profit { color: #047857; font-weight: 700; }
+    .total-row td {
+      background: #E5ECF6 !important;
+      color: #14161D;
+      font-weight: 800;
+      font-size: 10px;
+      padding-top: 9px;
+      padding-bottom: 9px;
+    }
+    .footer-note {
+      margin-top: 12px;
+      font-size: 9px;
+      color: #475569;
+      display: flex;
+      justify-content: space-between;
+    }
   </style>
 </head>
 <body>
@@ -591,12 +684,9 @@ function triggerPrintPDFDocument(documentTitle: string, bodyContent: string): vo
   }, 250);
 }
 
-/**
- * Exports Orders to a styled Owner PDF Report (triggers Save-as-PDF / Print dialog).
- */
 export function exportOrdersToPDF(
   orders: Order[],
-  reportTitle = 'Laporan Pesanan & Profitabilitas Owner',
+  reportTitle = 'Laporan Pesanan Mafrend.Studio',
   periodLabel = 'Semua Periode'
 ): void {
   const safeOrders = Array.isArray(orders) ? orders : [];
@@ -609,98 +699,108 @@ export function exportOrdersToPDF(
     totalOmzet > 0 ? Math.round(((totalProfit / totalOmzet) * 100) * 10) / 10 : 0;
 
   const rowsHtml = safeOrders
-    .map(
-      (o, idx) => `
+    .map((o, idx) => {
+      const pay = PDF_PAYMENT_LABELS[o.paymentStatus] || {
+        label: o.paymentStatus,
+        cls: 'pill-coral',
+      };
+      const proc = PDF_PROCESS_LABELS[o.processStatus] || {
+        label: o.processStatus,
+        cls: 'pill-blue',
+      };
+      return `
     <tr>
       <td>${idx + 1}</td>
-      <td class="bold">${escapeHtml(o.orderNumber)}<br/><span style="color:#787671;font-weight:normal">${escapeHtml(formatDateML(o.orderDate))}</span></td>
-      <td><span class="bold">${escapeHtml(o.buyerName)}</span><br/>${escapeHtml(o.buyerPhone)}</td>
-      <td><span class="bold">${escapeHtml(o.productName)}</span><br/><span style="color:#5d5b54">${escapeHtml(o.specs || '-')}</span></td>
+      <td><span class="bold">#${escapeHtml(o.orderNumber)}</span><br/><span class="muted">${escapeHtml(formatDateML(o.orderDate))}</span></td>
+      <td><span class="bold">${escapeHtml(o.buyerName)}</span><br/><span class="muted">${escapeHtml(o.buyerPhone)}</span></td>
+      <td><span class="bold">${escapeHtml(o.productName)}</span><br/><span class="muted">${escapeHtml(o.specs || '-')}</span></td>
       <td class="right bold">${(Number(o.qty) || 0).toLocaleString('id-ID')}</td>
-      <td class="right">${formatRpOwner(o.omzet)}</td>
+      <td class="right bold">${formatRpOwner(o.omzet)}</td>
       <td class="right">${formatRpOwner(o.hppBreakdown?.totalHpp ?? 0)}</td>
-      <td class="right profit">${formatRpOwner(o.profit)} (${Number(o.marginPct) || 0}%)</td>
-      <td>${escapeHtml(o.paymentStatus)}${o.remainingPayment > 0 ? `<br/><span style="color:#9a3412">Sisa: ${formatRpOwner(o.remainingPayment)}</span>` : ''}</td>
-      <td>${escapeHtml(o.processStatus)}</td>
-      <td>${escapeHtml(o.notes || '-')}</td>
-    </tr>`
-    )
+      <td class="right profit">${formatRpOwner(o.profit)}<br/><span class="muted">${Number(o.marginPct) || 0}%</span></td>
+      <td><span class="pill ${pay.cls}">${escapeHtml(pay.label)}</span>${o.remainingPayment > 0 ? `<br/><span class="muted">Sisa ${formatRpOwner(o.remainingPayment)}</span>` : ''}</td>
+      <td><span class="pill ${proc.cls}">${escapeHtml(proc.label)}</span></td>
+      <td class="muted">${escapeHtml(o.notes || '-')}</td>
+    </tr>`;
+    })
     .join('');
 
   const body = `
   <div class="header">
-    <div>
-      <h1>${escapeHtml(reportTitle)}</h1>
-      <p>Mafrend.Studio - Dokumen Resmi Owner | Filter: ${escapeHtml(periodLabel)}</p>
+    <div class="brand-row">
+      <div class="brand-mark">MF</div>
+      <div>
+        <h1>${escapeHtml(reportTitle)}</h1>
+        <div class="header-meta">Mafrend.Studio · ${escapeHtml(periodLabel)}</div>
+      </div>
     </div>
-    <div style="text-align:right;font-size:10px;">
-      <strong>Total Data: ${safeOrders.length} Pesanan</strong><br/>
-      Volume: ${totalQty.toLocaleString('id-ID')} pcs
+    <div class="header-right">
+      <strong>${safeOrders.length} Pesanan</strong><br/>
+      Total ${totalQty.toLocaleString('id-ID')} pcs
     </div>
   </div>
 
   <div class="kpi-grid">
-    <div class="kpi-card kpi-sky">
+    <div class="kpi-card kpi-hero">
       <div class="kpi-label">Total Omzet</div>
       <div class="kpi-val">${formatRpOwner(totalOmzet)}</div>
-      <div class="kpi-sub">${safeOrders.length} pesanan (${totalQty.toLocaleString('id-ID')} pcs)</div>
+      <div><span class="pill pill-mint">${safeOrders.length} pesanan · ${totalQty.toLocaleString('id-ID')} pcs</span></div>
     </div>
-    <div class="kpi-card kpi-lavender">
-      <div class="kpi-label">Total HPP Produksi</div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Modal (HPP)</div>
       <div class="kpi-val">${formatRpOwner(totalHpp)}</div>
-      <div class="kpi-sub">Biaya bahan, sablon, kerja & kemasan</div>
+      <div><span class="pill pill-blue">Bahan, tinta, kerja & kemasan</span></div>
     </div>
-    <div class="kpi-card kpi-mint">
-      <div class="kpi-label">Laba Bersih Pesanan</div>
+    <div class="kpi-card">
+      <div class="kpi-label">Laba Bersih</div>
       <div class="kpi-val">${formatRpOwner(totalProfit)}</div>
-      <div class="kpi-sub">Rata-rata Margin: ${avgMargin}%</div>
+      <div><span class="pill pill-mint">Rata-rata margin ${avgMargin}%</span></div>
     </div>
-    <div class="kpi-card kpi-peach">
+    <div class="kpi-card">
       <div class="kpi-label">Sisa Piutang / DP</div>
       <div class="kpi-val">${formatRpOwner(totalRemaining)}</div>
-      <div class="kpi-sub">Tagihan belum lunas</div>
+      <div><span class="pill pill-coral">Tagihan belum lunas</span></div>
     </div>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th style="width:24px">No</th>
-        <th>No. Pesanan & Tgl</th>
-        <th>Pelanggan</th>
-        <th>Produk & Spesifikasi</th>
-        <th class="right">Qty</th>
-        <th class="right">Omzet</th>
-        <th class="right">Total HPP</th>
-        <th class="right">Laba (Margin)</th>
-        <th>Pembayaran</th>
-        <th>Status</th>
-        <th>Catatan</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${rowsHtml}
-      <tr class="total-row">
-        <td colspan="4">TOTAL KESELURUHAN</td>
-        <td class="right">${totalQty.toLocaleString('id-ID')}</td>
-        <td class="right">${formatRpOwner(totalOmzet)}</td>
-        <td class="right">${formatRpOwner(totalHpp)}</td>
-        <td class="right">${formatRpOwner(totalProfit)} (${avgMargin}%)</td>
-        <td colspan="3">Sisa Piutang: ${formatRpOwner(totalRemaining)}</td>
-      </tr>
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:24px">No</th>
+          <th>ID & Tanggal</th>
+          <th>Pelanggan</th>
+          <th>Produk & Spesifikasi</th>
+          <th class="right">Qty</th>
+          <th class="right">Omzet</th>
+          <th class="right">HPP</th>
+          <th class="right">Laba</th>
+          <th>Pembayaran</th>
+          <th>Produksi</th>
+          <th>Catatan</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+        <tr class="total-row">
+          <td colspan="4">TOTAL</td>
+          <td class="right">${totalQty.toLocaleString('id-ID')}</td>
+          <td class="right">${formatRpOwner(totalOmzet)}</td>
+          <td class="right">${formatRpOwner(totalHpp)}</td>
+          <td class="right">${formatRpOwner(totalProfit)} (${avgMargin}%)</td>
+          <td colspan="3">Sisa piutang: ${formatRpOwner(totalRemaining)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
   <div class="footer-note">
-    <span>Laporan Eksekutif Owner - Mafrend.Studio</span>
-    <span>Gunakan opsi "Save as PDF" / "Simpan sebagai PDF" pada dialog cetak browser.</span>
+    <span>Mafrend.Studio</span>
+    <span>Simpan dokumen ini melalui pilihan "Simpan sebagai PDF" di dialog cetak.</span>
   </div>`;
 
   triggerPrintPDFDocument(`${reportTitle} - ${periodLabel}`, body);
 }
 
-/**
- * Exports Capex entries to a styled Owner PDF Report.
- */
 export function exportCapexToPDF(capex: CapexEntry[], periodLabel = 'Semua Periode'): void {
   const safeCapex = Array.isArray(capex) ? capex : [];
   const totalAmount = safeCapex.reduce((s, c) => s + (Number(c.amount) || 0), 0);
@@ -710,57 +810,59 @@ export function exportCapexToPDF(capex: CapexEntry[], periodLabel = 'Semua Perio
       (c, idx) => `
     <tr>
       <td>${idx + 1}</td>
-      <td>${escapeHtml(formatDateML(c.entryDate))}</td>
+      <td class="muted">${escapeHtml(formatDateML(c.entryDate))}</td>
       <td class="bold">${escapeHtml(c.itemName)}</td>
-      <td>${escapeHtml(c.category)}</td>
+      <td><span class="pill pill-blue">${escapeHtml(c.category)}</span></td>
       <td class="right bold">${formatRpOwner(c.amount)}</td>
-      <td>${escapeHtml(c.description || c.notes || '-')}</td>
+      <td class="muted">${escapeHtml(c.description || c.notes || '-')}</td>
     </tr>`
     )
     .join('');
 
   const body = `
   <div class="header">
-    <div>
-      <h1>Laporan Belanja Modal (Capex) Owner</h1>
-      <p>Mafrend.Studio - Investasi Peralatan & Aset Workshop | Periode: ${escapeHtml(periodLabel)}</p>
+    <div class="brand-row">
+      <div class="brand-mark">MF</div>
+      <div>
+        <h1>Laporan Belanja Modal (Capex)</h1>
+        <div class="header-meta">Mafrend.Studio · ${escapeHtml(periodLabel)}</div>
+      </div>
     </div>
-    <div style="text-align:right;font-size:11px;">
-      <strong>Total Capex: ${formatRpOwner(totalAmount)}</strong><br/>
-      ${safeCapex.length} Aset Tercatat
+    <div class="header-right">
+      <strong>${formatRpOwner(totalAmount)}</strong><br/>
+      ${safeCapex.length} item tercatat
     </div>
   </div>
-  <table>
-    <thead>
-      <tr>
-        <th style="width:28px">No</th>
-        <th style="width:90px">Tanggal</th>
-        <th>Nama Barang / Aset Modal</th>
-        <th style="width:150px">Kategori</th>
-        <th class="right" style="width:140px">Biaya Pembelian</th>
-        <th>Keterangan / Spesifikasi</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${rowsHtml}
-      <tr class="total-row">
-        <td colspan="4">TOTAL BELANJA MODAL (CAPEX)</td>
-        <td class="right">${formatRpOwner(totalAmount)}</td>
-        <td></td>
-      </tr>
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:28px">No</th>
+          <th style="width:90px">Tanggal</th>
+          <th>Nama Aset</th>
+          <th style="width:150px">Kategori</th>
+          <th class="right" style="width:140px">Biaya</th>
+          <th>Keterangan</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+        <tr class="total-row">
+          <td colspan="4">TOTAL BELANJA MODAL</td>
+          <td class="right">${formatRpOwner(totalAmount)}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
   <div class="footer-note">
-    <span>Laporan Belanja Modal (Capex) Owner - Mafrend.Studio</span>
-    <span>Pilih "Save as PDF" / "Simpan sebagai PDF" untuk menyimpan berkas PDF.</span>
+    <span>Mafrend.Studio</span>
+    <span>Simpan dokumen ini melalui pilihan "Simpan sebagai PDF" di dialog cetak.</span>
   </div>`;
 
-  triggerPrintPDFDocument(`Laporan Capex Owner - ${periodLabel}`, body);
+  triggerPrintPDFDocument(`Laporan Capex - ${periodLabel}`, body);
 }
 
-/**
- * Exports Recurring Raw Materials to a styled Owner PDF Report.
- */
 export function exportRawMaterialsToPDF(
   materials: RawMaterialEntry[],
   periodLabel = 'Semua Periode'
@@ -773,56 +875,61 @@ export function exportRawMaterialsToPDF(
       (m, idx) => `
     <tr>
       <td>${idx + 1}</td>
-      <td>${escapeHtml(formatDateML(m.entryDate))}</td>
+      <td class="muted">${escapeHtml(formatDateML(m.entryDate))}</td>
       <td class="bold">${escapeHtml(m.materialName)}</td>
-      <td>${escapeHtml(m.category)}</td>
+      <td><span class="pill pill-amber">${escapeHtml(m.category)}</span></td>
       <td>${escapeHtml(m.supplier || '-')}</td>
       <td class="right">${Number(m.qty ?? m.quantity) || 0} ${escapeHtml(m.unit)}</td>
       <td class="right">${formatRpOwner(m.unitPrice)}</td>
       <td class="right bold">${formatRpOwner(m.totalAmount)}</td>
-      <td>${escapeHtml(m.notes || '-')}</td>
+      <td class="muted">${escapeHtml(m.notes || '-')}</td>
     </tr>`
     )
     .join('');
 
   const body = `
   <div class="header">
-    <div>
-      <h1>Laporan Bahan Baku Berulang Owner</h1>
-      <p>Mafrend.Studio - Pasokan Rutin Workshop | Periode: ${escapeHtml(periodLabel)}</p>
+    <div class="brand-row">
+      <div class="brand-mark">MF</div>
+      <div>
+        <h1>Laporan Bahan Baku Berulang</h1>
+        <div class="header-meta">Mafrend.Studio · ${escapeHtml(periodLabel)}</div>
+      </div>
     </div>
-    <div style="text-align:right;font-size:11px;">
-      <strong>Total Bahan Baku: ${formatRpOwner(totalAmount)}</strong><br/>
-      ${safeMaterials.length} Nota Pembelian
+    <div class="header-right">
+      <strong>${formatRpOwner(totalAmount)}</strong><br/>
+      ${safeMaterials.length} nota pembelian
     </div>
   </div>
-  <table>
-    <thead>
-      <tr>
-        <th style="width:28px">No</th>
-        <th style="width:85px">Tanggal</th>
-        <th>Nama Bahan Baku</th>
-        <th>Kategori</th>
-        <th>Supplier / Toko</th>
-        <th class="right">Volume</th>
-        <th class="right">Harga Satuan</th>
-        <th class="right">Total Biaya</th>
-        <th>Catatan</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${rowsHtml}
-      <tr class="total-row">
-        <td colspan="7">TOTAL BELANJA BAHAN BAKU BERULANG</td>
-        <td class="right">${formatRpOwner(totalAmount)}</td>
-        <td></td>
-      </tr>
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:28px">No</th>
+          <th style="width:85px">Tanggal</th>
+          <th>Nama Bahan</th>
+          <th>Kategori</th>
+          <th>Supplier</th>
+          <th class="right">Volume</th>
+          <th class="right">Harga Satuan</th>
+          <th class="right">Total</th>
+          <th>Catatan</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+        <tr class="total-row">
+          <td colspan="7">TOTAL BAHAN BAKU</td>
+          <td class="right">${formatRpOwner(totalAmount)}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
   <div class="footer-note">
-    <span>Laporan Bahan Baku Berulang Owner - Mafrend.Studio</span>
-    <span>Pilih "Save as PDF" / "Simpan sebagai PDF" untuk menyimpan berkas PDF.</span>
+    <span>Mafrend.Studio</span>
+    <span>Simpan dokumen ini melalui pilihan "Simpan sebagai PDF" di dialog cetak.</span>
   </div>`;
 
-  triggerPrintPDFDocument(`Laporan Bahan Baku Owner - ${periodLabel}`, body);
+  triggerPrintPDFDocument(`Laporan Bahan Baku - ${periodLabel}`, body);
 }
