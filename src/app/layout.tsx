@@ -26,6 +26,10 @@ export const metadata: Metadata = {
   title: 'Mafrend.Studio',
   description:
     'Manajemen Produksi Sablon & Merchandise Custom, Standar Katalog HPP, dan Analitik Keuangan Mafrend.Studio',
+  icons: {
+    icon: '/logo-mafrend.png',
+    apple: '/logo-mafrend.png',
+  },
 };
 
 const themeInitScript = `try{var s=localStorage.getItem("color-scheme");var m=document.querySelector('meta[name="color-scheme"]');if(m)m.content=(s==="light"||s==="dark")?s:"light dark";var d=s==="dark"||(s!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.setAttribute("data-theme",d?"dark":"light");document.documentElement.classList.toggle("dark",d);}catch(e){}`;
