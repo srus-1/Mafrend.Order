@@ -31,7 +31,7 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  badge?: 'ordersCount' | 'new';
+  badge?: 'ordersCount';
 }
 
 const navItems: NavItem[] = [
@@ -45,7 +45,6 @@ const navItems: NavItem[] = [
     label: 'Katalog & HPP',
     href: '/catalog',
     icon: Package,
-    badge: 'new',
   },
   {
     label: 'Rekapan & Omzet',
@@ -227,11 +226,6 @@ export default function Sidebar() {
                         }`}
                       >
                         {orders.length}
-                      </span>
-                    )}
-                    {!isCollapsed && item.badge === 'new' && (
-                      <span className="px-2 py-0.5 rounded-full bg-[#8EA6FF] text-[#14161D] text-[10px] font-bold shrink-0">
-                        Baru
                       </span>
                     )}
                   </Link>

@@ -5,8 +5,9 @@ import { useOrders } from '@/context/OrderContext';
 import MetricCards from '@/components/dashboard/MetricCards';
 import MonthlyProfitChart from '@/components/dashboard/MonthlyProfitChart';
 import BuyerProfitTable from '@/components/dashboard/BuyerProfitTable';
-import { Calendar, ChevronDown, RotateCcw } from 'lucide-react';
+import { Calendar, RotateCcw } from 'lucide-react';
 import { formatRp, formatMonthLabel } from '@/lib/utils';
+import CustomSelect from '@/components/shared/CustomSelect';
 
 export default function DashboardPage() {
   const {
@@ -45,29 +46,20 @@ export default function DashboardPage() {
             Kas Terkumpul: {formatRp(totalCollected)} ({collectionRate}%)
           </div>
 
-          <div className="relative flex items-center">
-            <label htmlFor="dashboard-month-select" className="sr-only">
-              Pilih Bulan Analitik
-            </label>
-            <Calendar className="w-3.5 h-3.5 absolute left-3 pointer-events-none text-[var(--ink-muted)]" />
-            <select
+          <div className="min-w-[172px]">
+            <CustomSelect
               id="dashboard-month-select"
-              aria-label="Pilih Bulan Analitik"
+              ariaLabel="Pilih bulan laporan"
+              align="right"
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="appearance-none pl-9 pr-8 py-2 rounded-xl bg-[var(--bg-surface)] text-[var(--ink-primary)] text-xs font-semibold min-h-[38px]"
-            >
-              {displayMonths.map((m) => (
-                <option
-                  key={m}
-                  value={m}
-                  className="bg-[var(--bg-surface)] text-[var(--ink-primary)]"
-                >
-                  {formatMonthLabel(m)}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 pointer-events-none text-[var(--ink-muted)]" />
+              onChange={setSelectedMonth}
+              leadingIcon={<Calendar className="w-3.5 h-3.5 text-[var(--ink-muted)]" />}
+              triggerClassName="bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] shadow-[var(--shadow-card)]"
+              options={displayMonths.map((m) => ({
+                value: m,
+                label: formatMonthLabel(m),
+              }))}
+            />
           </div>
         </div>
       </div>

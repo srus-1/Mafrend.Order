@@ -8,6 +8,7 @@ import {
   RawMaterialCategory,
 } from '@/types/capex';
 import { formatRp } from '@/lib/utils';
+import CustomSelect from '@/components/shared/CustomSelect';
 
 export const RAW_MATERIAL_CATEGORIES: RawMaterialCategory[] = [
   'Akrilik & Aksesoris',
@@ -146,21 +147,13 @@ export default function RawMaterialFormModal({
               <label className="block text-xs font-semibold text-[var(--ink-secondary)] mb-1">
                 Kategori
               </label>
-              <select
+              <CustomSelect
+                ariaLabel="Kategori bahan baku"
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--bg-subtle)] text-xs font-semibold text-[var(--ink-primary)]"
-              >
-                {RAW_MATERIAL_CATEGORIES.map((c) => (
-                  <option
-                    key={c}
-                    value={c}
-                    className="bg-[var(--bg-surface)] text-[var(--ink-primary)]"
-                  >
-                    {c}
-                  </option>
-                ))}
-              </select>
+                onChange={setCategory}
+                triggerClassName="bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] min-h-[40px]"
+                options={RAW_MATERIAL_CATEGORIES.map((c) => ({ value: c, label: c }))}
+              />
             </div>
 
             <div>

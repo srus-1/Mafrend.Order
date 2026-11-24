@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { FilterTab } from '@/types/order';
 import { useOrders } from '@/context/OrderContext';
 import { Search, Calendar, X } from 'lucide-react';
@@ -22,31 +22,6 @@ export default function OrderFilterTabs() {
     orders,
   } = useOrders();
 
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  // Press "/" to focus search input when not typing inside a form field
-  useEffect(() => {
-    const handleSlash = (e: KeyboardEvent) => {
-      if (e.key !== '/' || e.altKey || e.ctrlKey || e.metaKey) return;
-      const target = e.target as HTMLElement | null;
-      if (target) {
-        const tag = target.tagName.toLowerCase();
-        if (
-          tag === 'input' ||
-          tag === 'textarea' ||
-          tag === 'select' ||
-          target.isContentEditable
-        ) {
-          return;
-        }
-      }
-      e.preventDefault();
-      searchInputRef.current?.focus();
-    };
-    window.addEventListener('keydown', handleSlash);
-    return () => window.removeEventListener('keydown', handleSlash);
-  }, []);
-
   const counts: Record<FilterTab, number> = {
     ALL: orders.length,
     BELUM_LUNAS_DP: orders.filter(
@@ -65,7 +40,6 @@ export default function OrderFilterTabs() {
 
   return (
     <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-      {/* Segmented Filter Track (Zero Border) */}
       <div
         className="flex items-center gap-1 p-1 bg-[var(--bg-seg-track)] rounded-xl overflow-x-auto select-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ WebkitOverflowScrolling: 'touch' }}
@@ -98,32 +72,26 @@ export default function OrderFilterTabs() {
         })}
       </div>
 
-      {/* Search & Date Filter Controls */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
         <div className="relative flex-1 sm:w-64">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-muted)] pointer-events-none" />
           <input
-            ref={searchInputRef}
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari pelanggan, kode, produk..."
             aria-label="Cari pesanan"
-            className="w-full pl-9 pr-9 py-2 min-h-[38px] rounded-xl bg-[var(--bg-subtle)] text-xs font-medium text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)]"
+            className="w-full pl-9 pr-8 py-2 min-h-[38px] rounded-xl bg-[var(--bg-subtle)] text-xs font-medium text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)]"
           />
-          {searchQuery ? (
+          {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              aria-label="Bersihkan pencarian"
+              aria-label="Hapus pencarian"
               className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-md flex items-center justify-center text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
             >
               <X className="w-3.5 h-3.5" />
             </button>
-          ) : (
-            <span className="hidden sm:inline-flex absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-[var(--bg-surface)] text-[10px] font-semibold text-[var(--ink-muted)] pointer-events-none">
-              /
-            </span>
           )}
         </div>
 
@@ -135,7 +103,7 @@ export default function OrderFilterTabs() {
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
               aria-label="Filter tanggal pesanan"
-              title="Filter Tanggal"
+              title="Filter tanggal"
               className="w-full sm:w-auto pl-9 pr-3 py-2 min-h-[38px] rounded-xl bg-[var(--bg-subtle)] text-xs font-medium text-[var(--ink-primary)]"
             />
           </div>

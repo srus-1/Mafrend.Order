@@ -8,10 +8,9 @@ import { ArrowUpDown, Plus } from 'lucide-react';
 import {
   exportOrdersToCSV,
   downloadCSVFile,
-  exportOrdersToExcel,
-  downloadExcelFile,
   exportOrdersToPDF,
 } from '@/lib/csvExport';
+import { downloadOrdersExcelXlsx } from '@/lib/excelExport';
 import ExportMenuButton from '@/components/shared/ExportMenuButton';
 
 export default function OrderPage() {
@@ -135,9 +134,12 @@ export default function OrderPage() {
       selectedOrderIds.length > 0
         ? `${selectedOrderIds.length} Pesanan Terpilih`
         : `Antrean Pesanan (${filterTab})`;
-    const excelContent = exportOrdersToExcel(targetOrders, label);
-    const suffix = selectedOrderIds.length > 0 ? 'selected' : 'owner';
-    downloadExcelFile(`mafrend-studio-pesanan-${suffix}.xls`, excelContent);
+    const suffix = selectedOrderIds.length > 0 ? 'selected' : 'laporan';
+    void downloadOrdersExcelXlsx(
+      targetOrders,
+      label,
+      `mafrend-studio-pesanan-${suffix}.xlsx`
+    );
   };
 
   const handleDownloadOrdersPDF = () => {

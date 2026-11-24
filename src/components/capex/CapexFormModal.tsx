@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { CapexEntry, CreateCapexInput, CapexCategory } from '@/types/capex';
+import CustomSelect from '@/components/shared/CustomSelect';
 
 export const CAPEX_CATEGORIES: CapexCategory[] = [
   'Mesin & Peralatan',
@@ -122,21 +123,13 @@ export default function CapexFormModal({ entry, onClose, onSave }: CapexFormModa
               <label className="block text-xs font-semibold text-[var(--ink-secondary)] mb-1">
                 Kategori
               </label>
-              <select
+              <CustomSelect
+                ariaLabel="Kategori belanja modal"
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--bg-subtle)] text-xs font-semibold text-[var(--ink-primary)]"
-              >
-                {CAPEX_CATEGORIES.map((c) => (
-                  <option
-                    key={c}
-                    value={c}
-                    className="bg-[var(--bg-surface)] text-[var(--ink-primary)]"
-                  >
-                    {c}
-                  </option>
-                ))}
-              </select>
+                onChange={setCategory}
+                triggerClassName="bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] min-h-[40px]"
+                options={CAPEX_CATEGORIES.map((c) => ({ value: c, label: c }))}
+              />
             </div>
 
             <div>

@@ -77,7 +77,7 @@ export default function ExportMenuButton({
           >
             <span className="text-xs font-bold text-[var(--ink-primary)]">Unduh PDF</span>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#F29B76] text-[#14161D]">
-              Owner
+              Cetak
             </span>
           </button>
 
@@ -92,7 +92,7 @@ export default function ExportMenuButton({
           >
             <span className="text-xs font-bold text-[var(--ink-primary)]">Unduh Excel</span>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#6EEB9A] text-[#14161D]">
-              Tabel
+              .xlsx
             </span>
           </button>
 
@@ -107,7 +107,7 @@ export default function ExportMenuButton({
           >
             <span className="text-xs font-bold text-[var(--ink-primary)]">Unduh CSV</span>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#8EA6FF] text-[#14161D]">
-              Dataset
+              Data
             </span>
           </button>
         </div>

@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Plus,
   Calendar,
-  ChevronDown,
   Search,
   X,
   Check,
@@ -24,14 +23,16 @@ import {
   exportCapexToCSV,
   exportRawMaterialsToCSV,
   downloadCSVFile,
-  exportCapexToExcel,
-  exportRawMaterialsToExcel,
-  downloadExcelFile,
   exportCapexToPDF,
   exportRawMaterialsToPDF,
 } from '@/lib/csvExport';
+import {
+  downloadCapexExcelXlsx,
+  downloadRawMaterialsExcelXlsx,
+} from '@/lib/excelExport';
 import ExportMenuButton from '@/components/shared/ExportMenuButton';
 import ActionMenuDropdown from '@/components/shared/ActionMenuDropdown';
+import CustomSelect from '@/components/shared/CustomSelect';
 import CapexFormModal from '@/components/capex/CapexFormModal';
 import RawMaterialFormModal from '@/components/capex/RawMaterialFormModal';
 
@@ -352,32 +353,23 @@ export default function CapexPage() {
         </h1>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex items-center">
-            <label htmlFor="capex-month-select" className="sr-only">
-              Pilih Bulan Pengeluaran
-            </label>
-            <Calendar className="w-3.5 h-3.5 absolute left-3 pointer-events-none text-[var(--ink-muted)]" />
-            <select
+          <div className="min-w-[172px]">
+            <CustomSelect
               id="capex-month-select"
-              aria-label="Pilih Bulan Pengeluaran"
+              ariaLabel="Pilih bulan pengeluaran"
+              align="right"
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="appearance-none pl-9 pr-8 py-2 rounded-xl bg-[var(--bg-surface)] text-[var(--ink-primary)] text-xs font-semibold min-h-[38px]"
-            >
-              <option value="ALL" className="bg-[var(--bg-surface)] text-[var(--ink-primary)]">
-                Semua Bulan
-              </option>
-              {displayMonths.map((m) => (
-                <option
-                  key={m}
-                  value={m}
-                  className="bg-[var(--bg-surface)] text-[var(--ink-primary)]"
-                >
-                  {formatMonthLabel(m)}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 pointer-events-none text-[var(--ink-muted)]" />
+              onChange={setSelectedMonth}
+              leadingIcon={<Calendar className="w-3.5 h-3.5 text-[var(--ink-muted)]" />}
+              triggerClassName="bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] shadow-[var(--shadow-card)]"
+              options={[
+                { value: 'ALL', label: 'Semua Bulan' },
+                ...displayMonths.map((m) => ({
+                  value: m,
+                  label: formatMonthLabel(m),
+                })),
+              ]}
+            />
           </div>
 
           <button
@@ -536,17 +528,14 @@ export default function CapexPage() {
                 {formatRp(totalCapexAmount)}
               </span>
               <ExportMenuButton
-                label="Export"
-                ariaLabel="Unduh CSV Capex, Excel, atau PDF"
+                label="Unduh Laporan"
+                ariaLabel="Unduh CSV, Excel, atau PDF capex"
                 variant="light-neutral"
                 onExportExcel={() => {
-                  const excelContent = exportCapexToExcel(
+                  void downloadCapexExcelXlsx(
                     filteredCapex,
-                    formatMonthLabel(selectedMonth)
-                  );
-                  downloadExcelFile(
-                    `mafrend-studio-capex-${selectedMonth || 'all'}.xls`,
-                    excelContent
+                    formatMonthLabel(selectedMonth),
+                    `mafrend-studio-capex-${selectedMonth || 'all'}.xlsx`
                   );
                 }}
                 onExportPDF={() => {
@@ -572,32 +561,38 @@ export default function CapexPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-2.5">
+              <div className="hidden lg:grid lg:grid-cols-12 gap-3 px-3.5 text-[11px] font-semibold text-[var(--ink-muted)]">
+                <span className="col-span-4">Aset & Kategori</span>
+                <span className="col-span-2">Tanggal</span>
+                <span className="col-span-3">Keterangan</span>
+                <span className="col-span-3 text-right">Biaya & Aksi</span>
+              </div>
+
               {filteredCapex.map((item) => (
                 <div
                   key={item.id}
-                  className="p-3.5 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  className="p-3.5 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors grid grid-cols-1 lg:grid-cols-12 lg:items-center gap-3"
                 >
-                  <div className="min-w-0 flex-1">
+                  <div className="lg:col-span-4 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)]">
+                      <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)] truncate">
                         {item.itemName}
                       </span>
-                      <span className="px-2 py-0.5 rounded-md bg-[#8EA6FF] text-[#14161D] text-[10px] font-bold">
+                      <span className="px-2 py-0.5 rounded-md bg-[#8EA6FF] text-[#14161D] text-[10px] font-bold shrink-0">
                         {item.category}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-[var(--ink-muted)] mt-1">
-                      <span className="tabular-nums">{formatDateShort(item.entryDate)}</span>
-                      {item.description && (
-                        <>
-                          <span>•</span>
-                          <span className="truncate">{item.description}</span>
-                        </>
-                      )}
-                    </div>
                   </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                  <div className="lg:col-span-2 text-[11px] font-medium text-[var(--ink-muted)] tabular-nums">
+                    {formatDateShort(item.entryDate)}
+                  </div>
+
+                  <div className="lg:col-span-3 text-xs text-[var(--ink-secondary)] line-clamp-1">
+                    {item.description || '-'}
+                  </div>
+
+                  <div className="lg:col-span-3 flex items-center justify-between lg:justify-end gap-3">
                     <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)] tabular-nums">
                       {formatRp(item.amount)}
                     </span>
@@ -650,17 +645,14 @@ export default function CapexPage() {
                 {formatRp(totalMaterialsAmount)}
               </span>
               <ExportMenuButton
-                label="Export"
-                ariaLabel="Unduh CSV Bahan Baku, Excel, atau PDF"
+                label="Unduh Laporan"
+                ariaLabel="Unduh CSV, Excel, atau PDF bahan baku"
                 variant="light-neutral"
                 onExportExcel={() => {
-                  const excelContent = exportRawMaterialsToExcel(
+                  void downloadRawMaterialsExcelXlsx(
                     filteredMaterials,
-                    formatMonthLabel(selectedMonth)
-                  );
-                  downloadExcelFile(
-                    `mafrend-studio-bahan-baku-${selectedMonth || 'all'}.xls`,
-                    excelContent
+                    formatMonthLabel(selectedMonth),
+                    `mafrend-studio-bahan-baku-${selectedMonth || 'all'}.xlsx`
                   );
                 }}
                 onExportPDF={() => {
@@ -689,43 +681,51 @@ export default function CapexPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-2.5">
+              <div className="hidden lg:grid lg:grid-cols-12 gap-3 px-3.5 text-[11px] font-semibold text-[var(--ink-muted)]">
+                <span className="col-span-4">Bahan & Kategori</span>
+                <span className="col-span-3">Supplier & Tanggal</span>
+                <span className="col-span-2">Volume & Harga</span>
+                <span className="col-span-3 text-right">Total & Aksi</span>
+              </div>
+
               {filteredMaterials.map((item) => (
                 <div
                   key={item.id}
-                  className="p-3.5 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-3"
+                  className="p-3.5 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors grid grid-cols-1 lg:grid-cols-12 lg:items-center gap-3"
                 >
-                  <div className="min-w-0 flex-1">
+                  <div className="lg:col-span-4 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)]">
+                      <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)] truncate">
                         {item.materialName}
                       </span>
-                      <span className="px-2 py-0.5 rounded-md bg-[#F9DC7E] text-[#14161D] text-[10px] font-bold">
+                      <span className="px-2 py-0.5 rounded-md bg-[#F9DC7E] text-[#14161D] text-[10px] font-bold shrink-0">
                         {item.category}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--ink-muted)] mt-1">
-                      <span className="tabular-nums">{formatDateShort(item.entryDate)}</span>
-                      {item.supplier && (
-                        <>
-                          <span>•</span>
-                          <span>{item.supplier}</span>
-                        </>
-                      )}
-                      {item.notes && (
-                        <>
-                          <span>•</span>
-                          <span className="truncate">{item.notes}</span>
-                        </>
-                      )}
+                    {item.notes && (
+                      <div className="text-[11px] text-[var(--ink-muted)] truncate mt-0.5">
+                        {item.notes}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="lg:col-span-3 min-w-0 text-[11px] text-[var(--ink-secondary)]">
+                    <div className="font-semibold text-[var(--ink-primary)] truncate">
+                      {item.supplier || '-'}
+                    </div>
+                    <div className="text-[var(--ink-muted)] tabular-nums mt-0.5">
+                      {formatDateShort(item.entryDate)}
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap sm:flex-nowrap items-center justify-between lg:justify-end gap-3 shrink-0">
-                    <span className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] font-bold text-[var(--ink-primary)] tabular-nums">
+                  <div className="lg:col-span-2 flex items-center">
+                    <span className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] font-bold text-[var(--ink-primary)] tabular-nums whitespace-nowrap">
                       {item.quantity} {item.unit} @ {formatRp(item.unitPrice)}
                     </span>
+                  </div>
 
-                    <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)] tabular-nums min-w-[100px] text-right">
+                  <div className="lg:col-span-3 flex items-center justify-between lg:justify-end gap-3">
+                    <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)] tabular-nums text-right">
                       {formatRp(item.totalAmount)}
                     </span>
 

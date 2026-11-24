@@ -7,6 +7,7 @@ import { PaymentStatus, ProcessStatus, Order, CreateOrderInput } from '@/types/o
 import { CatalogItem, CATALOG_CATEGORIES } from '@/types/catalog';
 import { catalogService } from '@/lib/supabase';
 import { calculateHPP, calculateMargin, formatRp } from '@/lib/utils';
+import CustomSelect from '@/components/shared/CustomSelect';
 
 interface OrderFormContentProps {
   editingOrder: Order | null;
@@ -250,20 +251,21 @@ function OrderFormContent({
               >
                 Pilih dari Katalog Item (Isi Otomatis HPP)
               </label>
-              <select
+              <CustomSelect
                 id="catalog-preset-select"
+                ariaLabel="Pilih preset dari katalog item"
                 value={selectedCatalogId}
-                onChange={(e) => handleSelectCatalog(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--bg-chip-on-row)] text-xs font-semibold text-[var(--ink-primary)] min-h-[40px]"
-              >
-                <option value="">Input manual atau pilih standar produk...</option>
-                {catalogItems.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.productName} - Jual {formatRp(item.defaultPricePerPcs)} (HPP{' '}
-                    {formatRp(item.totalHppPerPcs)}/pcs)
-                  </option>
-                ))}
-              </select>
+                onChange={handleSelectCatalog}
+                triggerClassName="bg-[var(--bg-chip-on-row)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] min-h-[40px]"
+                menuClassName="w-full max-w-none"
+                options={[
+                  { value: '', label: 'Input manual atau pilih standar produk...' },
+                  ...catalogItems.map((item) => ({
+                    value: item.id,
+                    label: `${item.productName} · Jual ${formatRp(item.defaultPricePerPcs)} (HPP ${formatRp(item.totalHppPerPcs)})`,
+                  })),
+                ]}
+              />
             </div>
 
             {selectedCatalogId && (
@@ -408,17 +410,15 @@ function OrderFormContent({
                 <span className="text-[11px] font-semibold text-[var(--ink-muted)]">
                   Kategori Katalog:
                 </span>
-                <select
-                  value={catalogCategory}
-                  onChange={(e) => setCatalogCategory(e.target.value)}
-                  className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-xs font-semibold text-[var(--ink-primary)]"
-                >
-                  {CATALOG_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-44">
+                  <CustomSelect
+                    ariaLabel="Kategori katalog"
+                    value={catalogCategory}
+                    onChange={setCatalogCategory}
+                    triggerClassName="bg-[var(--bg-chip-on-row)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] min-h-[34px]"
+                    options={CATALOG_CATEGORIES.map((c) => ({ value: c, label: c }))}
+                  />
+                </div>
               </div>
             )}
 
@@ -552,15 +552,18 @@ function OrderFormContent({
               <label className="block text-xs font-semibold text-[var(--ink-secondary)] mb-1.5">
                 Status Pembayaran
               </label>
-              <select
+              <CustomSelect
+                ariaLabel="Status pembayaran"
+                direction="up"
                 value={paymentStatus}
-                onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
-                className="w-full px-3.5 py-2.5 text-xs font-semibold bg-[var(--bg-subtle)] text-[var(--ink-primary)] rounded-xl min-h-[40px]"
-              >
-                <option value="LUNAS">Lunas</option>
-                <option value="DP">DP (Uang Muka)</option>
-                <option value="BELUM_LUNAS">Belum Lunas</option>
-              </select>
+                onChange={(val) => setPaymentStatus(val as PaymentStatus)}
+                triggerClassName="bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] min-h-[40px]"
+                options={[
+                  { value: 'LUNAS', label: 'Lunas', badgeClass: 'bg-[#6EEB9A]' },
+                  { value: 'DP', label: 'DP (Uang Muka)', badgeClass: 'bg-[#8EA6FF]' },
+                  { value: 'BELUM_LUNAS', label: 'Belum Lunas', badgeClass: 'bg-[#F29B76]' },
+                ]}
+              />
             </div>
 
             {paymentStatus === 'DP' ? (
@@ -596,18 +599,22 @@ function OrderFormContent({
               <label className="block text-xs font-semibold text-[var(--ink-secondary)] mb-1.5">
                 Status Produksi
               </label>
-              <select
+              <CustomSelect
+                ariaLabel="Status produksi"
+                direction="up"
+                align="right"
                 value={processStatus}
-                onChange={(e) => setProcessStatus(e.target.value as ProcessStatus)}
-                className="w-full px-3.5 py-2.5 text-xs font-semibold bg-[var(--bg-subtle)] text-[var(--ink-primary)] rounded-xl min-h-[40px]"
-              >
-                <option value="ANTREAN">1. Antrean</option>
-                <option value="SETTING_DESAIN">2. Setting Desain</option>
-                <option value="PROSES_CETAK">3. Proses Cetak</option>
-                <option value="FINISHING">4. Finishing</option>
-                <option value="SIAP_KIRIM">5. Siap Kirim</option>
-                <option value="SELESAI">6. Selesai</option>
-              </select>
+                onChange={(val) => setProcessStatus(val as ProcessStatus)}
+                triggerClassName="bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] min-h-[40px]"
+                options={[
+                  { value: 'ANTREAN', label: '1. Antrean', badgeClass: 'bg-[#8EA6FF]' },
+                  { value: 'SETTING_DESAIN', label: '2. Setting Desain', badgeClass: 'bg-[#8EA6FF]' },
+                  { value: 'PROSES_CETAK', label: '3. Proses Cetak', badgeClass: 'bg-[#8EA6FF]' },
+                  { value: 'FINISHING', label: '4. Finishing', badgeClass: 'bg-[#F9DC7E]' },
+                  { value: 'SIAP_KIRIM', label: '5. Siap Kirim', badgeClass: 'bg-[#F29B76]' },
+                  { value: 'SELESAI', label: '6. Selesai', badgeClass: 'bg-[#6EEB9A]' },
+                ]}
+              />
             </div>
 
             <div className="sm:col-span-3">

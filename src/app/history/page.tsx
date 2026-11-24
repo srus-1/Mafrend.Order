@@ -6,15 +6,14 @@ import { formatRp, formatDateShort, formatMonthLabel } from '@/lib/utils';
 import {
   exportOrdersToCSV,
   downloadCSVFile,
-  exportOrdersToExcel,
-  downloadExcelFile,
   exportOrdersToPDF,
 } from '@/lib/csvExport';
+import { downloadOrdersExcelXlsx } from '@/lib/excelExport';
 import ExportMenuButton from '@/components/shared/ExportMenuButton';
 import ActionMenuDropdown from '@/components/shared/ActionMenuDropdown';
+import CustomSelect from '@/components/shared/CustomSelect';
 import {
   Calendar,
-  ChevronDown,
   Search,
   MessageCircle,
   Inbox,
@@ -92,53 +91,41 @@ export default function HistoryPage() {
         </h1>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative flex items-center">
-            <label htmlFor="history-month-select" className="sr-only">
-              Pilih Bulan Riwayat
-            </label>
-            <Calendar className="w-3.5 h-3.5 absolute left-3 pointer-events-none text-[var(--ink-muted)]" />
-            <select
+          <div className="min-w-[172px]">
+            <CustomSelect
               id="history-month-select"
-              aria-label="Pilih Bulan Riwayat"
+              ariaLabel="Pilih bulan riwayat"
+              align="right"
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="appearance-none pl-9 pr-8 py-2 rounded-xl bg-[var(--bg-surface)] text-[var(--ink-primary)] text-xs font-semibold min-h-[38px]"
-            >
-              <option value="ALL" className="bg-[var(--bg-surface)] text-[var(--ink-primary)]">
-                Semua Bulan
-              </option>
-              {displayMonths.map((m) => (
-                <option
-                  key={m}
-                  value={m}
-                  className="bg-[var(--bg-surface)] text-[var(--ink-primary)]"
-                >
-                  {formatMonthLabel(m)}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 pointer-events-none text-[var(--ink-muted)]" />
+              onChange={setSelectedMonth}
+              leadingIcon={<Calendar className="w-3.5 h-3.5 text-[var(--ink-muted)]" />}
+              triggerClassName="bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] shadow-[var(--shadow-card)]"
+              options={[
+                { value: 'ALL', label: 'Semua Bulan' },
+                ...displayMonths.map((m) => ({
+                  value: m,
+                  label: formatMonthLabel(m),
+                })),
+              ]}
+            />
           </div>
 
           <ExportMenuButton
-            label="Export"
-            ariaLabel="Unduh CSV, Excel, atau PDF Riwayat Pesanan"
+            label="Unduh Laporan"
+            ariaLabel="Unduh CSV, Excel, atau PDF riwayat pesanan"
             variant="light-neutral"
             onExportExcel={() => {
-              const excelContent = exportOrdersToExcel(
+              void downloadOrdersExcelXlsx(
                 filteredHistory,
-                `Arsip Selesai (${formatMonthLabel(selectedMonth)})`
-              );
-              downloadExcelFile(
-                `mafrend-studio-riwayat-${selectedMonth || 'all'}.xls`,
-                excelContent
+                `Arsip Selesai (${formatMonthLabel(selectedMonth)})`,
+                `mafrend-studio-riwayat-${selectedMonth || 'all'}.xlsx`
               );
             }}
             onExportPDF={() => {
               exportOrdersToPDF(
                 filteredHistory,
                 'Laporan Arsip Pesanan Selesai Mafrend.Studio',
-                `Periode: ${formatMonthLabel(selectedMonth)}`
+                formatMonthLabel(selectedMonth)
               );
             }}
             onExportCSV={() => {
@@ -253,6 +240,14 @@ export default function HistoryPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-2.5">
+            <div className="hidden lg:grid lg:grid-cols-12 gap-3 px-3.5 text-[11px] font-semibold text-[var(--ink-muted)]">
+              <span className="col-span-3">Pemesan & ID</span>
+              <span className="col-span-4">Produk & Spesifikasi</span>
+              <span className="col-span-1">Jumlah</span>
+              <span className="col-span-2 text-right">Omzet & Laba</span>
+              <span className="col-span-2 text-right">Status & Aksi</span>
+            </div>
+
             {filteredHistory.map((order) => {
               const cleanPhone = order.buyerPhone.replace(/\D/g, '');
               const waNumber = cleanPhone.startsWith('0')
@@ -264,10 +259,9 @@ export default function HistoryPage() {
               return (
                 <div
                   key={order.id}
-                  className="p-3.5 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-3"
+                  className="p-3.5 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors grid grid-cols-1 lg:grid-cols-12 lg:items-center gap-3"
                 >
-                  {/* Order Code & Buyer */}
-                  <div className="flex items-center gap-3 min-w-0 lg:w-[250px] shrink-0">
+                  <div className="lg:col-span-3 flex items-center gap-3 min-w-0">
                     <div className="px-2.5 py-1.5 rounded-lg bg-[var(--bg-chip-on-row)] text-xs font-bold text-[var(--ink-primary)] tabular-nums shrink-0">
                       #{order.orderNumber}
                     </div>
@@ -275,24 +269,23 @@ export default function HistoryPage() {
                       <div className="text-xs font-bold text-[var(--ink-primary)] truncate">
                         {order.buyerName}
                       </div>
-                      <div className="flex items-center gap-2 text-[11px] text-[var(--ink-muted)] mt-0.5">
-                        <span>{formatDateShort(order.orderDate)}</span>
+                      <div className="flex items-center gap-1.5 text-[11px] text-[var(--ink-muted)] mt-0.5 truncate">
+                        <span className="shrink-0">{formatDateShort(order.orderDate)}</span>
                         <span>•</span>
                         <a
                           href={waUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 hover:text-[var(--ink-primary)]"
+                          className="inline-flex items-center gap-1 hover:text-[var(--ink-primary)] truncate"
                         >
-                          <MessageCircle className="w-3 h-3" />
-                          <span>{order.buyerPhone}</span>
+                          <MessageCircle className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{order.buyerPhone}</span>
                         </a>
                       </div>
                     </div>
                   </div>
 
-                  {/* Product & Specs */}
-                  <div className="flex-1 min-w-0">
+                  <div className="lg:col-span-4 min-w-0">
                     <div className="text-xs font-semibold text-[var(--ink-primary)] line-clamp-1">
                       {order.productName}
                     </div>
@@ -301,13 +294,17 @@ export default function HistoryPage() {
                     </div>
                   </div>
 
-                  {/* Volume, Omzet, Profit, Payment Badge & Unified Three-Dots */}
-                  <div className="flex flex-wrap sm:flex-nowrap items-center justify-between lg:justify-end gap-2.5 shrink-0">
-                    <span className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] font-bold text-[var(--ink-primary)] tabular-nums">
+                  <div className="lg:col-span-1 flex items-center">
+                    <span className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] font-bold text-[var(--ink-primary)] tabular-nums whitespace-nowrap">
                       {order.qty.toLocaleString('id-ID')} pcs
                     </span>
+                  </div>
 
-                    <div className="text-right min-w-[100px]">
+                  <div className="lg:col-span-2 flex items-center justify-between lg:block lg:text-right">
+                    <span className="text-[11px] font-semibold text-[var(--ink-muted)] lg:hidden">
+                      Omzet & Laba
+                    </span>
+                    <div>
                       <div className="text-xs font-bold text-[var(--ink-primary)] tabular-nums">
                         {formatRp(order.omzet)}
                       </div>
@@ -315,9 +312,11 @@ export default function HistoryPage() {
                         +{formatRp(order.profit)} ({order.marginPct}%)
                       </div>
                     </div>
+                  </div>
 
+                  <div className="lg:col-span-2 flex items-center justify-between lg:justify-end gap-2">
                     <span
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap ${
                         order.paymentStatus === 'LUNAS'
                           ? 'bg-[#6EEB9A] text-[#14161D]'
                           : order.paymentStatus === 'DP'

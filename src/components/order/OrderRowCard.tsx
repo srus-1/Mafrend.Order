@@ -11,6 +11,22 @@ import { Order, PaymentStatus, ProcessStatus } from '@/types/order';
 import { formatRp, formatDateShort } from '@/lib/utils';
 import { useOrders } from '@/context/OrderContext';
 import ActionMenuDropdown from '@/components/shared/ActionMenuDropdown';
+import CustomSelect, { CustomSelectOption } from '@/components/shared/CustomSelect';
+
+const PAYMENT_OPTIONS: CustomSelectOption[] = [
+  { value: 'LUNAS', label: 'Lunas', badgeClass: 'bg-[#6EEB9A]' },
+  { value: 'DP', label: 'DP', badgeClass: 'bg-[#8EA6FF]' },
+  { value: 'BELUM_LUNAS', label: 'Belum lunas', badgeClass: 'bg-[#F29B76]' },
+];
+
+const PROCESS_OPTIONS: CustomSelectOption[] = [
+  { value: 'ANTREAN', label: 'Antrean 1/6', badgeClass: 'bg-[#8EA6FF]' },
+  { value: 'SETTING_DESAIN', label: 'Setting 2/6', badgeClass: 'bg-[#8EA6FF]' },
+  { value: 'PROSES_CETAK', label: 'Cetak 3/6', badgeClass: 'bg-[#8EA6FF]' },
+  { value: 'FINISHING', label: 'Finishing 4/6', badgeClass: 'bg-[#F9DC7E]' },
+  { value: 'SIAP_KIRIM', label: 'Siap Kirim 5/6', badgeClass: 'bg-[#F29B76]' },
+  { value: 'SELESAI', label: 'Selesai 6/6', badgeClass: 'bg-[#6EEB9A]' },
+];
 
 interface OrderRowCardProps {
   order: Order;
@@ -76,14 +92,12 @@ function OrderRowCardComponent({
     }
   };
 
-  const handlePaymentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newStatus = e.target.value as PaymentStatus;
-    updateOrder(order.id, { paymentStatus: newStatus });
+  const handlePaymentChange = (nextValue: string) => {
+    updateOrder(order.id, { paymentStatus: nextValue as PaymentStatus });
   };
 
-  const handleProcessChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newStatus = e.target.value as ProcessStatus;
-    updateOrder(order.id, { processStatus: newStatus });
+  const handleProcessChange = (nextValue: string) => {
+    updateOrder(order.id, { processStatus: nextValue as ProcessStatus });
   };
 
   const cleanPhone = order.buyerPhone.replace(/\D/g, '');
@@ -253,60 +267,29 @@ function OrderRowCardComponent({
             {formatDateShort(order.deadline)}
           </span>
 
-          {/* Payment Select Pill (Rounded-Full Capsule per FigCraft) */}
-          <div className="relative">
-            <select
-              aria-label={`Status pembayaran ${order.orderNumber}`}
-              value={order.paymentStatus}
-              onChange={handlePaymentChange}
-              className={`appearance-none pl-3 pr-6 py-1.5 min-h-[32px] rounded-full text-[11px] font-bold cursor-pointer ${
-                paymentBadgeStyles[order.paymentStatus] || paymentBadgeStyles.BELUM_LUNAS
-              }`}
-            >
-              <option value="LUNAS" className="bg-[var(--bg-surface)] text-[var(--ink-primary)]">
-                ✓ Lunas
-              </option>
-              <option value="DP" className="bg-[var(--bg-surface)] text-[var(--ink-primary)]">
-                DP
-              </option>
-              <option value="BELUM_LUNAS" className="bg-[var(--bg-surface)] text-[var(--ink-primary)]">
-                Belum lunas
-              </option>
-            </select>
-            <ChevronDown className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[#14161D]" />
-          </div>
+          <CustomSelect
+            size="pill"
+            align="right"
+            ariaLabel={`Status pembayaran ${order.orderNumber}`}
+            value={order.paymentStatus}
+            onChange={handlePaymentChange}
+            options={PAYMENT_OPTIONS}
+            triggerClassName={
+              paymentBadgeStyles[order.paymentStatus] || paymentBadgeStyles.BELUM_LUNAS
+            }
+          />
 
-          {/* Process Select Pill (Rounded-Full Capsule per FigCraft) */}
-          <div className="relative">
-            <select
-              aria-label={`Status produksi ${order.orderNumber}`}
-              value={order.processStatus}
-              onChange={handleProcessChange}
-              className={`appearance-none pl-3 pr-6 py-1.5 min-h-[32px] rounded-full text-[11px] font-bold cursor-pointer ${
-                processBadgeStyles[order.processStatus] || processBadgeStyles.ANTREAN
-              }`}
-            >
-              <option value="ANTREAN" className="bg-[var(--bg-surface)] text-[var(--ink-primary)]">
-                Antrean 1/6
-              </option>
-              <option value="SETTING_DESAIN" className="bg-[var(--bg-surface)] text-[var(--ink-primary)]">
-                Setting 2/6
-              </option>
-              <option value="PROSES_CETAK" className="bg-[var(--bg-surface)] text-[var(--ink-primary)]">
-                Cetak 3/6
-              </option>
-              <option value="FINISHING" className="bg-[var(--bg-surface)] text-[var(--ink-primary)]">
-                Finishing 4/6
-              </option>
-              <option value="SIAP_KIRIM" className="bg-[var(--bg-surface)] text-[var(--ink-primary)]">
-                Siap Kirim 5/6
-              </option>
-              <option value="SELESAI" className="bg-[var(--bg-surface)] text-[var(--ink-primary)]">
-                ✓ Selesai 6/6
-              </option>
-            </select>
-            <ChevronDown className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[#14161D]" />
-          </div>
+          <CustomSelect
+            size="pill"
+            align="right"
+            ariaLabel={`Status produksi ${order.orderNumber}`}
+            value={order.processStatus}
+            onChange={handleProcessChange}
+            options={PROCESS_OPTIONS}
+            triggerClassName={
+              processBadgeStyles[order.processStatus] || processBadgeStyles.ANTREAN
+            }
+          />
 
           {/* Desktop Unified Three-Dots Action Menu */}
           <div className="hidden lg:block shrink-0">

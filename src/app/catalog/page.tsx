@@ -9,6 +9,7 @@ import {
 import { catalogService } from '@/lib/supabase';
 import { formatRp, calculateMargin } from '@/lib/utils';
 import ActionMenuDropdown from '@/components/shared/ActionMenuDropdown';
+import CustomSelect from '@/components/shared/CustomSelect';
 import { Plus, Search, X, Inbox, Check } from 'lucide-react';
 
 export default function CatalogPage() {
@@ -495,17 +496,14 @@ function CatalogFormModal({ item, onClose, onSave }: CatalogFormModalProps) {
               <label className="block text-xs font-semibold text-[var(--ink-secondary)] mb-1">
                 Kategori
               </label>
-              <select
+              <CustomSelect
+                ariaLabel="Kategori katalog"
+                align="right"
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--bg-subtle)] text-xs font-semibold text-[var(--ink-primary)]"
-              >
-                {CATALOG_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+                onChange={setCategory}
+                triggerClassName="bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] min-h-[40px]"
+                options={CATALOG_CATEGORIES.map((c) => ({ value: c, label: c }))}
+              />
             </div>
           </div>
 
