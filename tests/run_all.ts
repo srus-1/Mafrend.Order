@@ -16,6 +16,8 @@ async function main() {
     path.resolve(process.cwd(), 'tests/e2e_suite.ts'),
     path.resolve(process.cwd(), 'tests/mobile_sidebar.test.ts'),
     path.resolve(process.cwd(), 'tests/r4_r5_verification.test.ts'),
+    path.resolve(process.cwd(), 'tests/contrast_verification.test.ts'),
+    path.resolve(process.cwd(), 'tests/catalog_calculator.test.ts'),
   ];
 
   const stream = run({

@@ -3,12 +3,21 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getOrderMonth } from '../src/context/OrderContext';
-import { orderService, capexService, rawMaterialService } from '../src/lib/supabase';
 import {
+  orderService,
+  capexService,
+  rawMaterialService,
+  catalogService,
+  notifyIfAuthError,
+} from '../src/lib/supabase';
+import {
+  escapeCSVField,
+  formatNumericML,
   exportOrdersToCSV,
   exportCapexToCSV,
   exportRawMaterialsToCSV,
 } from '../src/lib/csvExport';
+import { formatMonthLabel } from '../src/lib/utils';
 import { Order } from '../src/types/order';
 import { CapexEntry, RawMaterialEntry } from '../src/types/capex';
 
@@ -426,6 +435,66 @@ describe('R1–R5 Comprehensive Verification Suite', () => {
       assert.equal(Number(record.total_hpp), simpleOrder.hppBreakdown.totalHpp);
       assert.equal(Number(record.profit), simpleOrder.profit);
       assert.equal(Number(record.margin_pct), simpleOrder.marginPct);
+    });
+
+    test('T1-R4-07: escapeCSVField neutralizes spreadsheet formula prefixes (=, +, -, @) while keeping negative numbers raw', () => {
+      assert.equal(escapeCSVField("=CMD|' /C calc'!A0"), "'=CMD|' /C calc'!A0");
+      assert.equal(escapeCSVField('+1+1'), "'+1+1");
+      assert.equal(escapeCSVField('-SUM(A1:A5)'), "'-SUM(A1:A5)");
+      assert.equal(escapeCSVField('@IMPORT("http://evil.example")'), `"'@IMPORT(""http://evil.example"")"`);
+      assert.equal(formatNumericML(-15000), '-15000');
+      assert.equal(escapeCSVField(-15000), '-15000');
+      assert.equal(escapeCSVField('Ganci Akrilik Normal'), 'Ganci Akrilik Normal');
+
+      const formulaOrder: Order = {
+        ...sampleOrder,
+        buyerName: '=HYPERLINK("http://evil.example","Click")',
+        productName: '+SUM(1,2)',
+      };
+      const csv = exportOrdersToCSV([formulaOrder]);
+      assert.ok(csv.includes(`"'=HYPERLINK(""http://evil.example"",""Click"")"`));
+      assert.ok(csv.includes("'+SUM(1,2)"));
+    });
+  });
+
+  describe('Suite 5: Architecture Modularization, Canonical Helpers & RLS/RPC Hardening (R5)', () => {
+    test('T1-R5-01: Canonical formatMonthLabel formats YYYY-MM and ALL consistently', () => {
+      assert.equal(formatMonthLabel('2026-11'), 'November 2026');
+      assert.equal(formatMonthLabel('2026-01'), 'Januari 2026');
+      assert.equal(formatMonthLabel('ALL'), 'Semua Bulan');
+      assert.equal(formatMonthLabel(''), 'Semua Bulan');
+    });
+
+    test('T1-R5-02: Modularized services re-export cleanly from src/lib/supabase and stay under 1000 lines', () => {
+      assert.equal(typeof orderService.getOrders, 'function');
+      assert.equal(typeof capexService.getCapexEntries, 'function');
+      assert.equal(typeof rawMaterialService.getRawMaterialEntries, 'function');
+      assert.equal(typeof catalogService.getCatalogItems, 'function');
+      assert.equal(typeof notifyIfAuthError, 'function');
+      assert.equal(notifyIfAuthError({ code: '42501', message: 'row-level security' }), true);
+      assert.equal(notifyIfAuthError({ code: '23505', message: 'duplicate key' }), false);
+
+      const supabaseLines = fs
+        .readFileSync(path.resolve(process.cwd(), 'src/lib/supabase.ts'), 'utf-8')
+        .split('\n').length;
+      const capexPageLines = fs
+        .readFileSync(path.resolve(process.cwd(), 'src/app/capex/page.tsx'), 'utf-8')
+        .split('\n').length;
+      assert.ok(supabaseLines < 900, `Expected supabase.ts < 900 lines, got ${supabaseLines}`);
+      assert.ok(capexPageLines < 900, `Expected capex/page.tsx < 900 lines, got ${capexPageLines}`);
+    });
+
+    test('T1-R5-03: Hardening migration defines atomic order_number RPC, batch reorder RPC, and authenticated-only RLS', () => {
+      const migPath = path.resolve(
+        process.cwd(),
+        'supabase/migrations/20261125010000_hardening_rls_and_rpc.sql'
+      );
+      const sql = fs.readFileSync(migPath, 'utf-8');
+      assert.ok(sql.includes('CREATE SEQUENCE IF NOT EXISTS public.order_number_seq'));
+      assert.ok(sql.includes('CREATE OR REPLACE FUNCTION public.next_order_number'));
+      assert.ok(sql.includes('CREATE OR REPLACE FUNCTION public.reorder_orders_batch'));
+      assert.ok(sql.includes('TO authenticated'));
+      assert.ok(!/CREATE POLICY[\s\S]*?TO anon/i.test(sql));
     });
   });
 });
