@@ -346,13 +346,44 @@ export default function CapexPage() {
         </div>
       )}
 
-      {/* Clean Single-Line Header (Zero Sub-Headline) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)]">
-          Capex & Bahan Baku
-        </h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)] truncate">
+            Capex & Bahan Baku
+          </h1>
 
-        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex sm:hidden items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingCapex(null);
+                setIsCapexModalOpen(true);
+              }}
+              aria-label="Tambah Capex"
+              title="Tambah Capex"
+              className="inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] shadow-[var(--shadow-card)] text-[var(--ink-primary)] text-[11px] font-semibold min-h-[36px]"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Capex</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEditingMaterial(null);
+                setIsMaterialModalOpen(true);
+              }}
+              aria-label="Tambah Bahan"
+              title="Tambah Bahan"
+              className="inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl bg-[var(--cta-bg)] hover:bg-[var(--cta-hover)] shadow-[var(--shadow-card)] text-[var(--cta-text)] text-[11px] font-semibold min-h-[36px]"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Bahan</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="hidden sm:flex flex-wrap items-center gap-2">
           <div className="min-w-[172px]">
             <CustomSelect
               id="capex-month-select"
@@ -398,64 +429,70 @@ export default function CapexPage() {
         </div>
       </div>
 
-      {/* 4 Borderless KPI Cards (Bottom Vivid Pills per FigCraft Frame 05) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="rounded-2xl p-5 bg-[#4638F5] text-[#FFFFFF] shadow-[var(--shadow-card)] flex flex-col justify-between gap-3">
-          <span className="text-xs font-semibold text-white/90">Total Belanja</span>
-          <div className="text-xl sm:text-2xl font-bold tracking-tight tabular-nums">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <div className="rounded-2xl p-3.5 sm:p-5 bg-[#4638F5] text-[#FFFFFF] shadow-[var(--shadow-card)] flex flex-col justify-between gap-2 sm:gap-3 min-w-0">
+          <span className="text-[11px] sm:text-xs font-semibold text-white/90 truncate">
+            Total Belanja
+          </span>
+          <div className="text-base sm:text-2xl font-bold tracking-tight tabular-nums truncate">
             {formatRp(totalSpending)}
           </div>
           <div>
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#6EEB9A] text-[#14161D] text-[11px] font-bold">
-              {loading ? '...' : `${totalTransactions} transaksi tercatat`}
+            <span className="inline-flex items-center px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-[#6EEB9A] text-[#14161D] text-[10px] sm:text-[11px] font-bold">
+              {loading ? '...' : `${totalTransactions} transaksi`}
             </span>
           </div>
         </div>
 
-        <div className="rounded-2xl p-5 bg-[var(--bg-surface)] shadow-[var(--shadow-card)] flex flex-col justify-between gap-3">
-          <span className="text-xs font-semibold text-[var(--ink-muted)]">Belanja Modal (Capex)</span>
-          <div className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)] tabular-nums">
+        <div className="rounded-2xl p-3.5 sm:p-5 bg-[var(--bg-surface)] shadow-[var(--shadow-card)] flex flex-col justify-between gap-2 sm:gap-3 min-w-0">
+          <span className="text-[11px] sm:text-xs font-semibold text-[var(--ink-muted)] truncate">
+            Belanja Modal (Capex)
+          </span>
+          <div className="text-base sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)] tabular-nums truncate">
             {formatRp(totalCapexAmount)}
           </div>
           <div>
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#8EA6FF] text-[#14161D] text-[11px] font-bold">
-              {filteredCapex.length} investasi alat
+            <span className="inline-flex items-center px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-[#8EA6FF] text-[#14161D] text-[10px] sm:text-[11px] font-bold">
+              {filteredCapex.length} aset
             </span>
           </div>
         </div>
 
-        <div className="rounded-2xl p-5 bg-[var(--bg-surface)] shadow-[var(--shadow-card)] flex flex-col justify-between gap-3">
-          <span className="text-xs font-semibold text-[var(--ink-muted)]">Bahan Baku Berulang</span>
-          <div className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)] tabular-nums">
+        <div className="rounded-2xl p-3.5 sm:p-5 bg-[var(--bg-surface)] shadow-[var(--shadow-card)] flex flex-col justify-between gap-2 sm:gap-3 min-w-0">
+          <span className="text-[11px] sm:text-xs font-semibold text-[var(--ink-muted)] truncate">
+            Bahan Baku Berulang
+          </span>
+          <div className="text-base sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)] tabular-nums truncate">
             {formatRp(totalMaterialsAmount)}
           </div>
           <div>
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#F9DC7E] text-[#14161D] text-[11px] font-bold">
-              {filteredMaterials.length} restock bahan
+            <span className="inline-flex items-center px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-[#F9DC7E] text-[#14161D] text-[10px] sm:text-[11px] font-bold">
+              {filteredMaterials.length} restock
             </span>
           </div>
         </div>
 
-        <div className="rounded-2xl p-5 bg-[var(--bg-surface)] shadow-[var(--shadow-card)] flex flex-col justify-between gap-3">
-          <span className="text-xs font-semibold text-[var(--ink-muted)]">Rata-rata Transaksi</span>
-          <div className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)] tabular-nums">
+        <div className="rounded-2xl p-3.5 sm:p-5 bg-[var(--bg-surface)] shadow-[var(--shadow-card)] flex flex-col justify-between gap-2 sm:gap-3 min-w-0">
+          <span className="text-[11px] sm:text-xs font-semibold text-[var(--ink-muted)] truncate">
+            Rata-rata Transaksi
+          </span>
+          <div className="text-base sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)] tabular-nums truncate">
             {formatRp(averageSpending)}
           </div>
           <div>
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#F29B76] text-[#14161D] text-[11px] font-bold">
-              Per nota belanja
+            <span className="inline-flex items-center px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-[#F29B76] text-[#14161D] text-[10px] sm:text-[11px] font-bold">
+              Per nota
             </span>
           </div>
         </div>
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="bg-[var(--bg-surface)] shadow-[var(--shadow-card)] rounded-2xl p-3 sm:p-3.5 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-        <div className="flex items-center gap-1 p-1 bg-[var(--bg-seg-track)] rounded-xl overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="bg-[var(--bg-surface)] shadow-[var(--shadow-card)] rounded-2xl p-3 sm:p-3.5 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-3 sm:flex sm:items-center gap-1 p-1 bg-[var(--bg-seg-track)] rounded-xl">
           <button
             type="button"
             onClick={() => setActiveTab('ALL')}
-            className={`px-3.5 py-2 min-h-[36px] rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+            className={`px-2 sm:px-3.5 py-2 min-h-[36px] rounded-lg text-[11px] sm:text-xs font-semibold truncate transition-colors ${
               activeTab === 'ALL'
                 ? 'bg-[#4638F5] text-[#FFFFFF]'
                 : 'text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-surface)]'
@@ -466,7 +503,7 @@ export default function CapexPage() {
           <button
             type="button"
             onClick={() => setActiveTab('CAPEX')}
-            className={`px-3.5 py-2 min-h-[36px] rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+            className={`px-2 sm:px-3.5 py-2 min-h-[36px] rounded-lg text-[11px] sm:text-xs font-semibold truncate transition-colors ${
               activeTab === 'CAPEX'
                 ? 'bg-[#4638F5] text-[#FFFFFF]'
                 : 'text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-surface)]'
@@ -477,36 +514,57 @@ export default function CapexPage() {
           <button
             type="button"
             onClick={() => setActiveTab('RAW_MATERIAL')}
-            className={`px-3.5 py-2 min-h-[36px] rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+            className={`px-2 sm:px-3.5 py-2 min-h-[36px] rounded-lg text-[11px] sm:text-xs font-semibold truncate transition-colors ${
               activeTab === 'RAW_MATERIAL'
                 ? 'bg-[#4638F5] text-[#FFFFFF]'
                 : 'text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-surface)]'
             }`}
           >
-            Bahan Baku ({filteredMaterials.length})
+            Bahan ({filteredMaterials.length})
           </button>
         </div>
 
-        <div className="relative w-full lg:w-72">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-muted)] pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Cari aset, bahan baku, atau supplier..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Cari pengeluaran"
-            className="w-full pl-9 pr-8 py-2 min-h-[38px] rounded-xl bg-[var(--bg-subtle)] text-xs font-medium text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)]"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              aria-label="Hapus pencarian"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
+        <div className="grid grid-cols-12 sm:block gap-2 w-full lg:w-72">
+          <div className="relative col-span-7 sm:w-full">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-[var(--ink-muted)] pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Cari aset, bahan..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Cari pengeluaran"
+              className="w-full pl-8 sm:pl-9 pr-7 sm:pr-8 py-2 min-h-[38px] rounded-xl bg-[var(--bg-subtle)] text-xs font-medium text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)]"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Hapus pencarian"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="col-span-5 sm:hidden min-w-0">
+            <CustomSelect
+              id="capex-month-select-mobile"
+              ariaLabel="Pilih bulan pengeluaran"
+              align="right"
+              value={selectedMonth}
+              onChange={setSelectedMonth}
+              leadingIcon={<Calendar className="w-3.5 h-3.5 text-[var(--ink-muted)]" />}
+              triggerClassName="bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)]"
+              options={[
+                { value: 'ALL', label: 'Semua' },
+                ...displayMonths.map((m) => ({
+                  value: m,
+                  label: formatMonthLabel(m),
+                })),
+              ]}
+            />
+          </div>
         </div>
       </div>
 
@@ -528,6 +586,7 @@ export default function CapexPage() {
                 {formatRp(totalCapexAmount)}
               </span>
               <ExportMenuButton
+                iconOnlyMobile
                 label="Unduh Laporan"
                 ariaLabel="Unduh CSV, Excel, atau PDF capex"
                 variant="light-neutral"
@@ -646,6 +705,7 @@ export default function CapexPage() {
                 {formatRp(totalMaterialsAmount)}
               </span>
               <ExportMenuButton
+                iconOnlyMobile
                 label="Unduh Laporan"
                 ariaLabel="Unduh CSV, Excel, atau PDF bahan baku"
                 variant="light-neutral"

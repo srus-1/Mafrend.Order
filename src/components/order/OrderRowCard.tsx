@@ -137,11 +137,9 @@ function OrderRowCardComponent({
           : 'bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70'
       } ${isDragging ? 'order-row-active z-30' : ''}`}
     >
-      {/* Compact Horizontal Row (Reference Layout) */}
-      <div className="px-3.5 py-2.5 flex flex-col lg:flex-row lg:items-center gap-2.5 lg:gap-3">
-        {/* Left Controls + Buyer + Code */}
+      <div className="p-3 lg:px-3.5 lg:py-2.5 flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-3">
         <div className="flex items-center justify-between lg:justify-start gap-2 min-w-0 lg:w-[270px] shrink-0">
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <input
               type="checkbox"
               checked={isSelected}
@@ -183,10 +181,10 @@ function OrderRowCardComponent({
               {getInitials(order.buyerName)}
             </div>
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <span
-                  className="text-xs font-bold text-[var(--ink-primary)] truncate max-w-[125px]"
+                  className="text-xs font-bold text-[var(--ink-primary)] truncate lg:max-w-[125px]"
                   title={order.buyerName}
                 >
                   {order.buyerName}
@@ -198,7 +196,6 @@ function OrderRowCardComponent({
             </div>
           </div>
 
-          {/* Mobile Action Dropdown */}
           <div className="lg:hidden shrink-0">
             <ActionMenuDropdown
               ariaLabel={`Menu aksi ${order.orderNumber}`}
@@ -222,34 +219,51 @@ function OrderRowCardComponent({
           </div>
         </div>
 
-        {/* Center Product + Specs */}
-        <div
-          onClick={() => setIsExpanded((prev) => !prev)}
-          className="flex-1 min-w-0 cursor-pointer"
-        >
+        <div className="flex items-start justify-between gap-3 lg:contents">
           <div
-            className="text-xs font-semibold text-[var(--ink-primary)] line-clamp-1 break-words"
-            title={order.productName}
+            onClick={() => setIsExpanded((prev) => !prev)}
+            className="flex-1 min-w-0 cursor-pointer"
           >
-            {order.productName}
+            <div
+              className="text-xs font-semibold text-[var(--ink-primary)] line-clamp-1 break-words"
+              title={order.productName}
+            >
+              {order.productName}
+            </div>
+            <div
+              className="text-[11px] text-[var(--ink-muted)] line-clamp-1 break-words mt-0.5"
+              title={order.specs || 'Spesifikasi standar'}
+            >
+              {hasSpecs ? order.specs : 'Spesifikasi standar'}
+            </div>
           </div>
-          <div
-            className="text-[11px] text-[var(--ink-muted)] line-clamp-1 break-words mt-0.5"
-            title={order.specs || 'Spesifikasi standar'}
-          >
-            {hasSpecs ? order.specs : 'Spesifikasi standar'}
+
+          <div className="lg:hidden shrink-0 text-right">
+            <div className="text-xs font-bold text-[var(--ink-primary)] tabular-nums whitespace-nowrap">
+              {formatRp(order.omzet)}
+            </div>
+            <div className="text-[11px] font-semibold tabular-nums whitespace-nowrap mt-0.5">
+              <span className="text-[var(--ink-muted)]">
+                {order.qty.toLocaleString('id-ID')} pcs
+              </span>
+              <span className="mx-1 text-[var(--ink-muted)]">·</span>
+              <span
+                className={
+                  isNegativeMargin ? 'text-[var(--ink-danger)]' : 'text-[var(--ink-profit)]'
+                }
+              >
+                {order.marginPct}%
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Right Metrics + Vivid Status Selectors + Desktop Three-Dots */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between lg:justify-end gap-2 shrink-0">
-          {/* Qty Chip */}
-          <span className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] font-bold text-[var(--ink-primary)] tabular-nums whitespace-nowrap">
+        <div className="flex items-center justify-between lg:justify-end gap-2 shrink-0 pt-1 lg:pt-0">
+          <span className="hidden lg:inline-block px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] font-bold text-[var(--ink-primary)] tabular-nums whitespace-nowrap">
             {order.qty.toLocaleString('id-ID')} pcs
           </span>
 
-          {/* Omzet + Stacked Laba % (FigCraft Reference) */}
-          <div className="flex flex-col items-end min-w-[116px]">
+          <div className="hidden lg:flex flex-col items-end min-w-[116px]">
             <span className="text-xs font-bold text-[var(--ink-primary)] tabular-nums whitespace-nowrap">
               {formatRp(order.omzet)}
             </span>
@@ -262,36 +276,40 @@ function OrderRowCardComponent({
             </span>
           </div>
 
-          {/* Deadline */}
           <span className="hidden xl:inline-block w-[86px] text-right text-[11px] font-medium text-[var(--ink-muted)] tabular-nums whitespace-nowrap">
             {formatDateShort(order.deadline)}
           </span>
 
-          <CustomSelect
-            size="pill"
-            align="right"
-            ariaLabel={`Status pembayaran ${order.orderNumber}`}
-            value={order.paymentStatus}
-            onChange={handlePaymentChange}
-            options={PAYMENT_OPTIONS}
-            triggerClassName={
-              paymentBadgeStyles[order.paymentStatus] || paymentBadgeStyles.BELUM_LUNAS
-            }
-          />
+          <div className="flex items-center gap-1.5 lg:gap-2">
+            <CustomSelect
+              size="pill"
+              align="left"
+              ariaLabel={`Status pembayaran ${order.orderNumber}`}
+              value={order.paymentStatus}
+              onChange={handlePaymentChange}
+              options={PAYMENT_OPTIONS}
+              triggerClassName={
+                paymentBadgeStyles[order.paymentStatus] || paymentBadgeStyles.BELUM_LUNAS
+              }
+            />
 
-          <CustomSelect
-            size="pill"
-            align="right"
-            ariaLabel={`Status produksi ${order.orderNumber}`}
-            value={order.processStatus}
-            onChange={handleProcessChange}
-            options={PROCESS_OPTIONS}
-            triggerClassName={
-              processBadgeStyles[order.processStatus] || processBadgeStyles.ANTREAN
-            }
-          />
+            <CustomSelect
+              size="pill"
+              align="right"
+              ariaLabel={`Status produksi ${order.orderNumber}`}
+              value={order.processStatus}
+              onChange={handleProcessChange}
+              options={PROCESS_OPTIONS}
+              triggerClassName={
+                processBadgeStyles[order.processStatus] || processBadgeStyles.ANTREAN
+              }
+            />
+          </div>
 
-          {/* Desktop Unified Three-Dots Action Menu */}
+          <span className="lg:hidden text-[11px] font-medium text-[var(--ink-muted)] tabular-nums whitespace-nowrap">
+            {formatDateShort(order.deadline)}
+          </span>
+
           <div className="hidden lg:block shrink-0">
             <ActionMenuDropdown
               ariaLabel={`Menu aksi ${order.orderNumber}`}

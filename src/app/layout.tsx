@@ -54,7 +54,7 @@ export default function RootLayout({
                       <SetupNoticeBanner />
                       <TopHeader />
 
-                      <main className="flex-1 p-4 sm:p-6 md:p-7 max-w-[1400px] w-full mx-auto">
+                      <main className="flex-1 p-3 sm:p-6 md:p-7 max-w-[1400px] w-full mx-auto">
                         {children}
                       </main>
                     </div>

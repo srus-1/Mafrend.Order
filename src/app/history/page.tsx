@@ -85,13 +85,13 @@ export default function HistoryPage() {
   return (
     <div className="flex flex-col gap-4">
       {/* Clean Single-Line Header (Zero Sub-Headline) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)]">
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)] truncate">
           Riwayat & Arsip
         </h1>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="min-w-[172px]">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          <div className="min-w-[136px] sm:min-w-[172px]">
             <CustomSelect
               id="history-month-select"
               ariaLabel="Pilih bulan riwayat"
@@ -111,6 +111,7 @@ export default function HistoryPage() {
           </div>
 
           <ExportMenuButton
+            iconOnlyMobile
             label="Unduh Laporan"
             ariaLabel="Unduh CSV, Excel, atau PDF riwayat pesanan"
             variant="light-neutral"
@@ -139,75 +140,73 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      {/* 4 Tall-Header-Strip CRM Summary Cards (FigCraft Frame 04) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="rounded-2xl bg-[var(--bg-surface)] shadow-[var(--shadow-card)] overflow-hidden flex flex-col justify-between">
-          <div className="px-4 py-2 bg-[#8EA6FF] text-[#14161D] text-xs font-bold">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <div className="rounded-2xl bg-[var(--bg-surface)] shadow-[var(--shadow-card)] overflow-hidden flex flex-col justify-between min-w-0">
+          <div className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#8EA6FF] text-[#14161D] text-[11px] sm:text-xs font-bold truncate">
             Pesanan Selesai
           </div>
-          <div className="p-4 sm:p-5">
-            <div className="text-xl sm:text-2xl font-bold text-[var(--ink-primary)] tabular-nums">
+          <div className="p-3 sm:p-5">
+            <div className="text-base sm:text-2xl font-bold text-[var(--ink-primary)] tabular-nums truncate">
               {filteredHistory.length} Order
             </div>
-            <p className="text-[11px] font-medium text-[var(--ink-muted)] mt-1">
-              Total {totalCompletedPcs.toLocaleString('id-ID')} pcs tercetak
+            <p className="text-[10px] sm:text-[11px] font-medium text-[var(--ink-muted)] mt-1 truncate">
+              {totalCompletedPcs.toLocaleString('id-ID')} pcs tercetak
             </p>
           </div>
         </div>
 
-        <div className="rounded-2xl bg-[var(--bg-surface)] shadow-[var(--shadow-card)] overflow-hidden flex flex-col justify-between">
-          <div className="px-4 py-2 bg-[#F29B76] text-[#14161D] text-xs font-bold">
+        <div className="rounded-2xl bg-[var(--bg-surface)] shadow-[var(--shadow-card)] overflow-hidden flex flex-col justify-between min-w-0">
+          <div className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#F29B76] text-[#14161D] text-[11px] sm:text-xs font-bold truncate">
             Omzet Selesai
           </div>
-          <div className="p-4 sm:p-5">
-            <div className="text-xl sm:text-2xl font-bold text-[var(--ink-primary)] tabular-nums">
+          <div className="p-3 sm:p-5">
+            <div className="text-base sm:text-2xl font-bold text-[var(--ink-primary)] tabular-nums truncate">
               {formatRp(totalCompletedOmzet)}
             </div>
-            <p className="text-[11px] font-medium text-[var(--ink-muted)] mt-1">
-              Total HPP {formatRp(totalCompletedHpp)}
+            <p className="text-[10px] sm:text-[11px] font-medium text-[var(--ink-muted)] mt-1 truncate">
+              HPP {formatRp(totalCompletedHpp)}
             </p>
           </div>
         </div>
 
-        <div className="rounded-2xl bg-[var(--bg-surface)] shadow-[var(--shadow-card)] overflow-hidden flex flex-col justify-between">
-          <div className="px-4 py-2 bg-[#6EEB9A] text-[#14161D] text-xs font-bold">
+        <div className="rounded-2xl bg-[var(--bg-surface)] shadow-[var(--shadow-card)] overflow-hidden flex flex-col justify-between min-w-0">
+          <div className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#6EEB9A] text-[#14161D] text-[11px] sm:text-xs font-bold truncate">
             Laba Terealisasi
           </div>
-          <div className="p-4 sm:p-5">
-            <div className="text-xl sm:text-2xl font-bold text-[var(--ink-primary)] tabular-nums">
+          <div className="p-3 sm:p-5">
+            <div className="text-base sm:text-2xl font-bold text-[var(--ink-primary)] tabular-nums truncate">
               {formatRp(totalCompletedProfit)}
             </div>
-            <p className="text-[11px] font-semibold text-[var(--ink-profit)] mt-1">
-              Rata-rata margin {avgMargin}%
+            <p className="text-[10px] sm:text-[11px] font-semibold text-[var(--ink-profit)] mt-1 truncate">
+              Margin {avgMargin}%
             </p>
           </div>
         </div>
 
-        <div className="rounded-2xl bg-[var(--bg-surface)] shadow-[var(--shadow-card)] overflow-hidden flex flex-col justify-between">
-          <div className="px-4 py-2 bg-[#F9DC7E] text-[#14161D] text-xs font-bold">
+        <div className="rounded-2xl bg-[var(--bg-surface)] shadow-[var(--shadow-card)] overflow-hidden flex flex-col justify-between min-w-0">
+          <div className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#F9DC7E] text-[#14161D] text-[11px] sm:text-xs font-bold truncate">
             Status Pelunasan
           </div>
-          <div className="p-4 sm:p-5">
-            <div className="text-xl sm:text-2xl font-bold text-[var(--ink-primary)]">
+          <div className="p-3 sm:p-5">
+            <div className="text-base sm:text-2xl font-bold text-[var(--ink-primary)] truncate">
               Terkirim
             </div>
-            <p className="text-[11px] font-medium text-[var(--ink-muted)] mt-1">
+            <p className="text-[10px] sm:text-[11px] font-medium text-[var(--ink-muted)] mt-1 truncate">
               Produksi 6/6 tuntas
             </p>
           </div>
         </div>
       </div>
 
-      {/* Search & Separated Archive Rows Container */}
-      <div className="bg-[var(--bg-surface)] shadow-[var(--shadow-card)] p-3.5 sm:p-4 rounded-2xl flex flex-col gap-3.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="relative w-full sm:max-w-sm">
+      <div className="bg-[var(--bg-surface)] shadow-[var(--shadow-card)] p-3 sm:p-4 rounded-2xl flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2.5">
+          <div className="relative flex-1 sm:max-w-sm">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-muted)] pointer-events-none" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Cari kode pesanan, pelanggan, produk..."
+              placeholder="Cari kode, pelanggan, produk..."
               aria-label="Cari riwayat pesanan"
               className="w-full pl-9 pr-8 py-2 min-h-[38px] rounded-xl bg-[var(--bg-subtle)] text-xs font-medium text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)]"
             />
@@ -223,8 +222,8 @@ export default function HistoryPage() {
             )}
           </div>
 
-          <span className="text-xs font-semibold text-[var(--ink-muted)]">
-            {filteredHistory.length} arsip selesai
+          <span className="text-[11px] sm:text-xs font-semibold text-[var(--ink-muted)] whitespace-nowrap shrink-0">
+            {filteredHistory.length} arsip
           </span>
         </div>
 

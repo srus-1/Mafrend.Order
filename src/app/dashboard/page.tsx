@@ -35,18 +35,36 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Clean Single-Line Header (Zero Sub-Headline) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)]">
-          Rekapan & Omzet
-        </h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)] truncate">
+            Rekapan & Omzet
+          </h1>
+
+          <div className="sm:hidden min-w-[140px] shrink-0">
+            <CustomSelect
+              id="dashboard-month-select-mobile"
+              ariaLabel="Pilih bulan laporan"
+              align="right"
+              value={selectedMonth}
+              onChange={setSelectedMonth}
+              leadingIcon={<Calendar className="w-3.5 h-3.5 text-[var(--ink-muted)]" />}
+              triggerClassName="bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] shadow-[var(--shadow-card)]"
+              options={displayMonths.map((m) => ({
+                value: m,
+                label: formatMonthLabel(m),
+              }))}
+            />
+          </div>
+        </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="px-3.5 py-2 rounded-xl bg-[#6EEB9A] text-[#14161D] text-xs font-bold tabular-nums min-h-[38px] flex items-center">
-            Kas Terkumpul: {formatRp(totalCollected)} ({collectionRate}%)
+          <div className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-[#6EEB9A] text-[#14161D] text-xs font-bold tabular-nums min-h-[36px] sm:min-h-[38px] flex items-center justify-between sm:justify-start">
+            <span>Kas Terkumpul: {formatRp(totalCollected)}</span>
+            <span className="sm:ml-1">({collectionRate}%)</span>
           </div>
 
-          <div className="min-w-[172px]">
+          <div className="hidden sm:block min-w-[172px]">
             <CustomSelect
               id="dashboard-month-select"
               ariaLabel="Pilih bulan laporan"

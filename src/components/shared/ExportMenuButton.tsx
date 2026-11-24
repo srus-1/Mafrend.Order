@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Download } from 'lucide-react';
 
 export interface ExportMenuButtonProps {
   label: string;
   ariaLabel?: string;
   variant?: 'navy' | 'purple' | 'light-lavender' | 'light-mint' | 'light-neutral';
+  iconOnlyMobile?: boolean;
   onExportExcel: () => void;
   onExportPDF: () => void;
   onExportCSV: () => void;
@@ -15,6 +16,7 @@ export interface ExportMenuButtonProps {
 export default function ExportMenuButton({
   label,
   ariaLabel,
+  iconOnlyMobile = false,
   onExportExcel,
   onExportPDF,
   onExportCSV,
@@ -48,15 +50,19 @@ export default function ExportMenuButton({
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-label={ariaLabel || label}
+        title={label}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] shadow-[var(--shadow-card)] text-[var(--ink-primary)] text-xs font-semibold transition-all active:scale-[0.97] min-h-[38px]"
+        className={`inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] shadow-[var(--shadow-card)] text-[var(--ink-primary)] text-xs font-semibold transition-all active:scale-[0.97] min-h-[38px] ${
+          iconOnlyMobile ? 'w-[38px] sm:w-auto px-0 sm:px-3.5 py-2' : 'px-3.5 py-2'
+        }`}
       >
-        <span>{label}</span>
+        {iconOnlyMobile && <Download className="w-4 h-4 sm:hidden" />}
+        <span className={iconOnlyMobile ? 'hidden sm:inline' : ''}>{label}</span>
         <ChevronDown
           className={`w-3.5 h-3.5 text-[var(--ink-muted)] transition-transform duration-150 ${
-            open ? 'rotate-180' : ''
-          }`}
+            iconOnlyMobile ? 'hidden sm:block' : ''
+          } ${open ? 'rotate-180' : ''}`}
         />
       </button>
 

@@ -129,9 +129,8 @@ export default function CatalogPage() {
         </div>
       )}
 
-      {/* Clean Single-Line Header (Zero Sub-Headline) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)]">
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)] truncate">
           Katalog Item
         </h1>
 
@@ -141,55 +140,61 @@ export default function CatalogPage() {
             setEditingItem(null);
             setIsModalOpen(true);
           }}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[var(--cta-bg)] hover:bg-[var(--cta-hover)] text-[var(--cta-text)] shadow-[var(--shadow-card)] text-xs font-semibold rounded-xl transition-all active:scale-[0.97] min-h-[38px] self-start sm:self-auto"
+          aria-label="Tambah Item"
+          title="Tambah Item"
+          className="inline-flex items-center justify-center gap-1.5 w-[38px] sm:w-auto px-0 sm:px-4 py-2 bg-[var(--cta-bg)] hover:bg-[var(--cta-hover)] text-[var(--cta-text)] shadow-[var(--shadow-card)] text-xs font-semibold rounded-xl transition-all active:scale-[0.97] min-h-[38px] shrink-0"
         >
           <Plus className="w-4 h-4 stroke-[2.2]" />
-          <span>Tambah Item</span>
+          <span className="hidden sm:inline">Tambah Item</span>
         </button>
       </div>
 
-      {/* 3 Borderless KPI Cards (1 Electric Indigo Hero + 2 Surface Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-        <div className="rounded-2xl p-4 sm:p-5 bg-[#4638F5] text-[#FFFFFF] shadow-[var(--shadow-card)] flex flex-col justify-between gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-white/90">Total Item Standar</span>
-            <span className="px-2 py-0.5 rounded-md bg-white/20 text-[#FFFFFF] text-[10px] font-bold">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3.5">
+        <div className="rounded-2xl p-3.5 sm:p-5 bg-[#4638F5] text-[#FFFFFF] shadow-[var(--shadow-card)] flex flex-col justify-between gap-2 min-w-0">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-semibold text-white/90 truncate">
+              Total Item
+            </span>
+            <span className="px-2 py-0.5 rounded-md bg-white/20 text-[#FFFFFF] text-[10px] font-bold shrink-0">
               Aktif
             </span>
           </div>
-          <div className="text-2xl font-bold tracking-tight tabular-nums">
+          <div className="text-base sm:text-2xl font-bold tracking-tight tabular-nums truncate">
             {kpiStats.count} Produk
           </div>
         </div>
 
-        <div className="rounded-2xl p-4 sm:p-5 bg-[var(--bg-surface)] shadow-[var(--shadow-card)] flex flex-col justify-between gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--ink-muted)]">Rata-rata HPP / Pcs</span>
-            <span className="px-2 py-0.5 rounded-md bg-[#8EA6FF] text-[#14161D] text-[10px] font-bold">
+        <div className="rounded-2xl p-3.5 sm:p-5 bg-[var(--bg-surface)] shadow-[var(--shadow-card)] flex flex-col justify-between gap-2 min-w-0">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-semibold text-[var(--ink-muted)] truncate">
+              Rata-rata HPP
+            </span>
+            <span className="px-2 py-0.5 rounded-md bg-[#8EA6FF] text-[#14161D] text-[10px] font-bold shrink-0">
               Modal
             </span>
           </div>
-          <div className="text-2xl font-bold tracking-tight text-[var(--ink-primary)] tabular-nums">
+          <div className="text-base sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)] tabular-nums truncate">
             {formatRp(kpiStats.avgHpp)}
           </div>
         </div>
 
-        <div className="rounded-2xl p-4 sm:p-5 bg-[var(--bg-surface)] shadow-[var(--shadow-card)] flex flex-col justify-between gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--ink-muted)]">Rata-rata Margin</span>
-            <span className="px-2 py-0.5 rounded-md bg-[#6EEB9A] text-[#14161D] text-[10px] font-bold">
+        <div className="rounded-2xl p-3.5 sm:p-5 bg-[var(--bg-surface)] shadow-[var(--shadow-card)] flex flex-col justify-between gap-2 min-w-0">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-semibold text-[var(--ink-muted)] truncate">
+              Rata-rata Margin
+            </span>
+            <span className="px-2 py-0.5 rounded-md bg-[#6EEB9A] text-[#14161D] text-[10px] font-bold shrink-0">
               Target
             </span>
           </div>
-          <div className="text-2xl font-bold tracking-tight text-[var(--ink-profit)] tabular-nums">
+          <div className="text-base sm:text-2xl font-bold tracking-tight text-[var(--ink-profit)] tabular-nums truncate">
             {kpiStats.avgMargin}%
           </div>
         </div>
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="bg-[var(--bg-surface)] shadow-[var(--shadow-card)] rounded-2xl p-3 sm:p-3.5 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-        <div className="flex items-center gap-1 p-1 bg-[var(--bg-seg-track)] rounded-xl overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="bg-[var(--bg-surface)] shadow-[var(--shadow-card)] rounded-2xl p-3 sm:p-3.5 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-3 sm:flex sm:items-center gap-1 p-1 bg-[var(--bg-seg-track)] rounded-xl">
           {['ALL', ...CATALOG_CATEGORIES].map((cat) => {
             const active = selectedCategory === cat;
             return (
@@ -197,7 +202,7 @@ export default function CatalogPage() {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-2 min-h-[36px] rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                className={`px-2 sm:px-3.5 py-2 min-h-[36px] rounded-lg text-[11px] sm:text-xs font-semibold truncate transition-colors ${
                   active
                     ? 'bg-[#4638F5] text-[#FFFFFF]'
                     : 'text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-surface)]'
