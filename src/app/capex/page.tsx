@@ -535,7 +535,8 @@ export default function CapexPage() {
                   void downloadCapexExcelXlsx(
                     filteredCapex,
                     formatMonthLabel(selectedMonth),
-                    `mafrend-studio-capex-${selectedMonth || 'all'}.xlsx`
+                    `mafrend-studio-capex-${selectedMonth || 'all'}.xlsx`,
+                    (msg) => showNotice('error', msg)
                   );
                 }}
                 onExportPDF={() => {
@@ -652,7 +653,8 @@ export default function CapexPage() {
                   void downloadRawMaterialsExcelXlsx(
                     filteredMaterials,
                     formatMonthLabel(selectedMonth),
-                    `mafrend-studio-bahan-baku-${selectedMonth || 'all'}.xlsx`
+                    `mafrend-studio-bahan-baku-${selectedMonth || 'all'}.xlsx`,
+                    (msg) => showNotice('error', msg)
                   );
                 }}
                 onExportPDF={() => {

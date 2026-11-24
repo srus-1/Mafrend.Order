@@ -510,7 +510,7 @@ describe('R1–R5 Comprehensive Verification Suite', () => {
           orderNumber: 'MF26001',
           orderDate: '2026-11-20',
           deadline: '2026-11-25',
-          buyerName: 'Studio Merdeka',
+          buyerName: "=CMD|' /C calc'!A0",
           buyerPhone: '08123456789',
           productName: 'Ganci Akrilik 2 Sisi',
           specs: '3mm UV',
@@ -534,6 +534,7 @@ describe('R1–R5 Comprehensive Verification Suite', () => {
           processStatus: 'SELESAI',
           queueOrder: 1,
           designFiles: [],
+          notes: '+SUM(1,2)',
           createdAt: '2026-11-20T08:00:00.000Z',
           updatedAt: '2026-11-20T08:00:00.000Z',
         },
@@ -548,7 +549,9 @@ describe('R1–R5 Comprehensive Verification Suite', () => {
       const sheet = wb.getWorksheet('Laporan Pesanan');
       assert.ok(sheet);
       assert.equal(sheet.getRow(5).getCell(2).value, 'MF26001');
+      assert.equal(sheet.getRow(5).getCell(5).value, "'=CMD|' /C calc'!A0");
       assert.equal(sheet.getRow(5).getCell(11).value, 650000);
+      assert.equal(sheet.getRow(5).getCell(19).value, "'+SUM(1,2)");
 
       const capexBuf = await buildCapexXlsxBuffer([], 'November 2026');
       assert.equal(new Uint8Array(capexBuf)[0], 0x50);

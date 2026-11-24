@@ -11,14 +11,17 @@ import {
   exportCapexToCSV,
   exportRawMaterialsToCSV,
   downloadCSVFile,
-  exportOrdersToExcel,
-  exportCapexToExcel,
-  exportRawMaterialsToExcel,
-  downloadExcelFile,
   exportOrdersToPDF,
   exportCapexToPDF,
   exportRawMaterialsToPDF,
 } from '../src/lib/csvExport';
+import {
+  buildOrdersXlsxBuffer,
+  buildCapexXlsxBuffer,
+  buildRawMaterialsXlsxBuffer,
+  downloadOrdersExcelXlsx,
+} from '../src/lib/excelExport';
+import ExcelJS from 'exceljs';
 import { Order } from '../src/types/order';
 import { CapexEntry, RawMaterialEntry } from '../src/types/capex';
 
@@ -220,15 +223,15 @@ describe('Milestone 4: ML-Ready CSV Export Verification Suite', () => {
     assert.ok(capexPage.includes('Unduh CSV Capex'));
     assert.ok(capexPage.includes('Unduh CSV Bahan Baku'));
 
-    // Also verify SSR guard in downloadCSVFile does not throw in Node
+    // Also verify SSR guards do not throw in Node
     assert.doesNotThrow(() => downloadCSVFile('test.csv', 'a,b\r\n1,2'));
-    assert.doesNotThrow(() => downloadExcelFile('test.xls', '<table></table>'));
+    assert.doesNotThrow(() => void downloadOrdersExcelXlsx([], '2026-10', 'test.xlsx'));
     assert.doesNotThrow(() => exportOrdersToPDF([], 'Title', '2026-10'));
     assert.doesNotThrow(() => exportCapexToPDF([], '2026-10'));
     assert.doesNotThrow(() => exportRawMaterialsToPDF([], '2026-10'));
   });
 
-  test('Owner Excel exports include full details (specs, notes) and summary totals while CSV excludes them', () => {
+  test('Genuine .xlsx Excel exports include full details (specs, notes) and summary totals', async () => {
     const sampleOrder: Order = {
       id: 'ord-xls-1',
       orderNumber: 'ORD-2026-0777',
@@ -263,13 +266,15 @@ describe('Milestone 4: ML-Ready CSV Export Verification Suite', () => {
       updatedAt: '2026-10-20T08:00:00.000Z',
     };
 
-    const excelOrders = exportOrdersToExcel([sampleOrder], 'Oktober 2026');
-    assert.ok(excelOrders.includes('LAPORAN PESANAN OWNER'));
-    assert.ok(excelOrders.includes('SPESIFIKASI_LENGKAP_UNTUK_OWNER'));
-    assert.ok(excelOrders.includes('CATATAN_PENTING_UNTUK_OWNER'));
-    assert.ok(excelOrders.includes('TOTAL RINGKASAN OWNER'));
+    const ordersBuf = await buildOrdersXlsxBuffer([sampleOrder], 'Oktober 2026');
+    const ordersWb = new ExcelJS.Workbook();
+    await ordersWb.xlsx.load(ordersBuf);
+    const ordersSheet = ordersWb.getWorksheet('Laporan Pesanan');
+    assert.ok(ordersSheet);
+    assert.equal(ordersSheet.getRow(5).getCell(8).value, 'SPESIFIKASI_LENGKAP_UNTUK_OWNER');
+    assert.equal(ordersSheet.getRow(5).getCell(19).value, 'CATATAN_PENTING_UNTUK_OWNER');
 
-    const excelCapex = exportCapexToExcel(
+    const capexBuf = await buildCapexXlsxBuffer(
       [
         {
           id: 'cpx-1',
@@ -284,10 +289,13 @@ describe('Milestone 4: ML-Ready CSV Export Verification Suite', () => {
       ],
       'Oktober 2026'
     );
-    assert.ok(excelCapex.includes('LAPORAN BELANJA MODAL (CAPEX) OWNER'));
-    assert.ok(excelCapex.includes('KETERANGAN_CAPEX_OWNER'));
+    const capexWb = new ExcelJS.Workbook();
+    await capexWb.xlsx.load(capexBuf);
+    const capexSheet = capexWb.getWorksheet('Laporan Capex');
+    assert.ok(capexSheet);
+    assert.equal(capexSheet.getRow(5).getCell(6).value, 'KETERANGAN_CAPEX_OWNER');
 
-    const excelMat = exportRawMaterialsToExcel(
+    const matBuf = await buildRawMaterialsXlsxBuffer(
       [
         {
           id: 'mat-1',
@@ -306,7 +314,10 @@ describe('Milestone 4: ML-Ready CSV Export Verification Suite', () => {
       ],
       'Oktober 2026'
     );
-    assert.ok(excelMat.includes('LAPORAN BAHAN BAKU BERULANG OWNER'));
-    assert.ok(excelMat.includes('CATATAN_BAHAN_OWNER'));
+    const matWb = new ExcelJS.Workbook();
+    await matWb.xlsx.load(matBuf);
+    const matSheet = matWb.getWorksheet('Laporan Bahan Baku');
+    assert.ok(matSheet);
+    assert.equal(matSheet.getRow(5).getCell(10).value, 'CATATAN_BAHAN_OWNER');
   });
 });

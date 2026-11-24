@@ -42,7 +42,10 @@ export default function CustomSelect({
   disabled = false,
 }: CustomSelectProps) {
   const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const pathname = usePathname();
   const [prevPathname, setPrevPathname] = useState(pathname);
   const autoId = useId();
@@ -65,6 +68,34 @@ export default function CustomSelect({
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpen(false);
+        triggerRef.current?.focus();
+        return;
+      }
+      if (options.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActiveIndex((prev) => {
+          const next = prev < options.length - 1 ? prev + 1 : 0;
+          optionRefs.current[next]?.focus();
+          return next;
+        });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActiveIndex((prev) => {
+          const next = prev > 0 ? prev - 1 : options.length - 1;
+          optionRefs.current[next]?.focus();
+          return next;
+        });
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setActiveIndex(0);
+        optionRefs.current[0]?.focus();
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        const last = options.length - 1;
+        setActiveIndex(last);
+        optionRefs.current[last]?.focus();
       }
     };
 
@@ -74,10 +105,22 @@ export default function CustomSelect({
       document.removeEventListener('mousedown', handleOutside);
       document.removeEventListener('keydown', handleKey);
     };
-  }, [open]);
+  }, [open, options.length]);
 
-  const selectedOption = options.find((opt) => opt.value === value);
+  const selectedIndex = options.findIndex((opt) => opt.value === value);
+  const selectedOption = selectedIndex >= 0 ? options[selectedIndex] : undefined;
   const displayLabel = selectedOption ? selectedOption.label : placeholder;
+
+  const toggleOpen = () => {
+    if (disabled) return;
+    setOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+      }
+      return next;
+    });
+  };
 
   const baseTrigger =
     size === 'pill'
@@ -90,12 +133,19 @@ export default function CustomSelect({
   return (
     <div ref={containerRef} className={`relative ${size === 'field' ? 'w-full' : 'inline-flex'}`}>
       <button
+        ref={triggerRef}
         id={id}
         type="button"
         disabled={disabled}
         onClick={(e) => {
           e.stopPropagation();
-          if (!disabled) setOpen((prev) => !prev);
+          toggleOpen();
+        }}
+        onKeyDown={(e) => {
+          if (!open && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+            e.preventDefault();
+            toggleOpen();
+          }
         }}
         aria-label={ariaLabel}
         aria-haspopup="listbox"
@@ -123,23 +173,29 @@ export default function CustomSelect({
           aria-label={ariaLabel}
           className={`absolute ${alignClass} ${directionClass} min-w-full w-max max-w-[260px] max-h-60 overflow-y-auto rounded-xl bg-[var(--bg-surface-elevated)] p-1.5 shadow-[0_14px_34px_rgba(0,0,0,0.18)] z-50 flex flex-col gap-0.5 text-left ${menuClassName}`}
         >
-          {options.map((opt) => {
+          {options.map((opt, idx) => {
             const isSelected = opt.value === value;
+            const isHighlighted = idx === activeIndex;
             return (
               <button
                 key={opt.value}
+                ref={(el) => {
+                  optionRefs.current[idx] = el;
+                }}
                 type="button"
                 role="option"
                 aria-selected={isSelected}
+                onMouseEnter={() => setActiveIndex(idx)}
                 onClick={(e) => {
                   e.stopPropagation();
                   setOpen(false);
                   if (opt.value !== value) {
                     onChange(opt.value);
                   }
+                  triggerRef.current?.focus();
                 }}
                 className={`w-full px-3 py-2 rounded-lg text-xs font-semibold text-left transition-colors min-h-[34px] flex items-center justify-between gap-2.5 ${
-                  isSelected
+                  isSelected || isHighlighted
                     ? 'bg-[var(--bg-row)] text-[var(--ink-primary)]'
                     : 'text-[var(--ink-primary)] hover:bg-[var(--bg-row)]'
                 }`}

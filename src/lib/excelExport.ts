@@ -1,7 +1,12 @@
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 import { Order, PaymentStatus, ProcessStatus } from '@/types/order';
 import { CapexEntry, RawMaterialEntry } from '@/types/capex';
 import { formatDateML } from './csvExport';
+
+async function loadExcelJS(): Promise<typeof ExcelJS> {
+  const mod = await import('exceljs');
+  return mod.default;
+}
 
 const PAYMENT_LABELS: Record<PaymentStatus, string> = {
   LUNAS: 'Lunas',
@@ -128,6 +133,7 @@ export async function buildOrdersXlsxBuffer(
   orders: Order[],
   periodLabel = 'Semua Periode'
 ): Promise<ArrayBuffer> {
+  const ExcelJS = await loadExcelJS();
   const safeOrders = Array.isArray(orders) ? orders : [];
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Mafrend.Studio';
@@ -267,16 +273,25 @@ export async function buildOrdersXlsxBuffer(
 export async function downloadOrdersExcelXlsx(
   orders: Order[],
   periodLabel: string,
-  filename: string
-): Promise<void> {
-  const buffer = await buildOrdersXlsxBuffer(orders, periodLabel);
-  triggerXlsxDownload(buffer, filename);
+  filename: string,
+  onError?: (message: string) => void
+): Promise<boolean> {
+  try {
+    const buffer = await buildOrdersXlsxBuffer(orders, periodLabel);
+    triggerXlsxDownload(buffer, filename);
+    return true;
+  } catch (err) {
+    console.error('Gagal membuat file Excel pesanan:', err);
+    onError?.('Gagal membuat file Excel pesanan. Coba lagi.');
+    return false;
+  }
 }
 
 export async function buildCapexXlsxBuffer(
   capex: CapexEntry[],
   periodLabel = 'Semua Periode'
 ): Promise<ArrayBuffer> {
+  const ExcelJS = await loadExcelJS();
   const safeCapex = Array.isArray(capex) ? capex : [];
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Mafrend.Studio';
@@ -328,16 +343,25 @@ export async function buildCapexXlsxBuffer(
 export async function downloadCapexExcelXlsx(
   capex: CapexEntry[],
   periodLabel: string,
-  filename: string
-): Promise<void> {
-  const buffer = await buildCapexXlsxBuffer(capex, periodLabel);
-  triggerXlsxDownload(buffer, filename);
+  filename: string,
+  onError?: (message: string) => void
+): Promise<boolean> {
+  try {
+    const buffer = await buildCapexXlsxBuffer(capex, periodLabel);
+    triggerXlsxDownload(buffer, filename);
+    return true;
+  } catch (err) {
+    console.error('Gagal membuat file Excel capex:', err);
+    onError?.('Gagal membuat file Excel belanja modal. Coba lagi.');
+    return false;
+  }
 }
 
 export async function buildRawMaterialsXlsxBuffer(
   materials: RawMaterialEntry[],
   periodLabel = 'Semua Periode'
 ): Promise<ArrayBuffer> {
+  const ExcelJS = await loadExcelJS();
   const safeMaterials = Array.isArray(materials) ? materials : [];
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Mafrend.Studio';
@@ -423,8 +447,16 @@ export async function buildRawMaterialsXlsxBuffer(
 export async function downloadRawMaterialsExcelXlsx(
   materials: RawMaterialEntry[],
   periodLabel: string,
-  filename: string
-): Promise<void> {
-  const buffer = await buildRawMaterialsXlsxBuffer(materials, periodLabel);
-  triggerXlsxDownload(buffer, filename);
+  filename: string,
+  onError?: (message: string) => void
+): Promise<boolean> {
+  try {
+    const buffer = await buildRawMaterialsXlsxBuffer(materials, periodLabel);
+    triggerXlsxDownload(buffer, filename);
+    return true;
+  } catch (err) {
+    console.error('Gagal membuat file Excel bahan baku:', err);
+    onError?.('Gagal membuat file Excel bahan baku. Coba lagi.');
+    return false;
+  }
 }
