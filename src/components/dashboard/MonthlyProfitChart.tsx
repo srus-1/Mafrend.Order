@@ -42,40 +42,51 @@ export default function MonthlyProfitChart({ data }: MonthlyProfitChartProps) {
   const activeItem = hoveredIdx !== null ? data[hoveredIdx] : data[data.length - 1];
 
   return (
-    <div className="w-full bg-[var(--bg-surface)] shadow-[var(--shadow-card)] rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3.5">
-      {/* Header & Legend (Zero Sub-Headline) */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-bold text-[var(--ink-primary)]">
+    <div className="w-full bg-[var(--bg-surface)] shadow-[var(--shadow-card)] rounded-2xl p-3.5 sm:p-5 flex flex-col justify-between gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-bold text-[var(--ink-primary)] truncate">
           Tren Omzet & Laba
         </h2>
 
-        <div className="flex items-center gap-4 text-xs font-semibold">
+        <div className="flex items-center gap-3 sm:gap-4 text-[11px] sm:text-xs font-semibold shrink-0">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-xs bg-[#4638F5]" />
             <span className="text-[var(--ink-secondary)]">Omzet</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-xs bg-[var(--chart-profit-bar)]" />
-            <span className="text-[var(--ink-secondary)]">Laba Bersih</span>
+            <span className="text-[var(--ink-secondary)]">Laba</span>
           </div>
         </div>
       </div>
 
-      {/* Tonal Readout Strip (Zero Border) */}
       {activeItem && (
-        <div className="px-3.5 py-2 rounded-xl bg-[var(--bg-row)] flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="px-2 py-0.5 rounded-md bg-[#4638F5] text-[#FFFFFF] font-bold text-[11px]">
+        <div className="px-3 sm:px-3.5 py-2 rounded-xl bg-[var(--bg-row)] flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 text-[11px] sm:text-xs">
+          <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3">
+            <span className="px-2 py-0.5 rounded-md bg-[#4638F5] text-[#FFFFFF] font-bold text-[10px] sm:text-[11px] shrink-0">
               {activeItem.monthLabel}
             </span>
-            <span className="text-[var(--ink-secondary)] tabular-nums">
+            <span className="sm:hidden px-2 py-0.5 rounded-md bg-[#6EEB9A] text-[#14161D] font-bold text-[10px] tabular-nums shrink-0">
+              Margin {activeItem.marginPct}%
+            </span>
+            <span className="hidden sm:inline text-[var(--ink-secondary)] tabular-nums">
               Omzet: <strong className="text-[var(--ink-primary)]">{formatRp(activeItem.omzet)}</strong>
             </span>
-            <span className="text-[var(--ink-secondary)] tabular-nums">
+            <span className="hidden sm:inline text-[var(--ink-secondary)] tabular-nums">
               Laba: <strong className="text-[var(--ink-profit)]">{formatRp(activeItem.profit)}</strong>
             </span>
           </div>
-          <span className="px-2 py-0.5 rounded-md bg-[#6EEB9A] text-[#14161D] font-bold text-[11px] tabular-nums">
+
+          <div className="flex sm:hidden items-center justify-between gap-2 tabular-nums">
+            <span className="text-[var(--ink-secondary)]">
+              Omzet <strong className="text-[var(--ink-primary)]">{formatRp(activeItem.omzet)}</strong>
+            </span>
+            <span className="text-[var(--ink-secondary)]">
+              Laba <strong className="text-[var(--ink-profit)]">{formatRp(activeItem.profit)}</strong>
+            </span>
+          </div>
+
+          <span className="hidden sm:inline-block px-2 py-0.5 rounded-md bg-[#6EEB9A] text-[#14161D] font-bold text-[11px] tabular-nums shrink-0">
             Margin {activeItem.marginPct}%
           </span>
         </div>

@@ -155,7 +155,10 @@ export default function CatalogPage() {
             <span className="text-[11px] sm:text-xs font-semibold text-white/90 truncate">
               Total Item
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-white/20 text-[#FFFFFF] text-[10px] font-bold shrink-0">
+            <span className="sm:hidden px-2 py-0.5 rounded-md bg-[#6EEB9A] text-[#14161D] text-[10px] font-bold tabular-nums shrink-0">
+              Margin {kpiStats.avgMargin}%
+            </span>
+            <span className="hidden sm:inline-flex px-2 py-0.5 rounded-md bg-white/20 text-[#FFFFFF] text-[10px] font-bold shrink-0">
               Aktif
             </span>
           </div>
@@ -178,16 +181,16 @@ export default function CatalogPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl p-3.5 sm:p-5 bg-[var(--bg-surface)] shadow-[var(--shadow-card)] flex flex-col justify-between gap-2 min-w-0">
+        <div className="hidden sm:flex rounded-2xl p-5 bg-[var(--bg-surface)] shadow-[var(--shadow-card)] flex-col justify-between gap-2 min-w-0">
           <div className="flex items-center justify-between gap-1.5">
-            <span className="text-[11px] sm:text-xs font-semibold text-[var(--ink-muted)] truncate">
+            <span className="text-xs font-semibold text-[var(--ink-muted)] truncate">
               Rata-rata Margin
             </span>
             <span className="px-2 py-0.5 rounded-md bg-[#6EEB9A] text-[#14161D] text-[10px] font-bold shrink-0">
               Target
             </span>
           </div>
-          <div className="text-base sm:text-2xl font-bold tracking-tight text-[var(--ink-profit)] tabular-nums truncate">
+          <div className="text-2xl font-bold tracking-tight text-[var(--ink-profit)] tabular-nums truncate">
             {kpiStats.avgMargin}%
           </div>
         </div>
@@ -273,48 +276,97 @@ export default function CatalogPage() {
             return (
               <div
                 key={item.id}
-                className="p-3.5 sm:p-4 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-3"
+                className="p-3 sm:p-4 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 lg:gap-3"
               >
-                {/* Left: Product Name, Category Pill & Specs */}
-                <div className="min-w-0 lg:w-[290px] shrink-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-bold text-[var(--ink-primary)] truncate">
-                      {item.productName}
-                    </span>
-                    <span
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${categoryBadgeStyle(
-                        item.category
-                      )}`}
-                    >
-                      {item.category}
-                    </span>
+                <div className="flex items-start justify-between gap-2 min-w-0 lg:w-[290px] shrink-0">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)] truncate">
+                        {item.productName}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0 ${categoryBadgeStyle(
+                          item.category
+                        )}`}
+                      >
+                        {item.category}
+                      </span>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-[var(--ink-muted)] line-clamp-1 mt-0.5 sm:mt-1">
+                      {item.defaultSpecs || 'Spesifikasi standar workshop'}
+                    </p>
                   </div>
-                  <p className="text-xs text-[var(--ink-muted)] line-clamp-1 mt-1">
-                    {item.defaultSpecs || 'Spesifikasi standar workshop'}
-                  </p>
+
+                  <div className="lg:hidden shrink-0">
+                    <ActionMenuDropdown
+                      ariaLabel={`Menu aksi ${item.productName}`}
+                      items={[
+                        {
+                          label: 'Edit',
+                          onClick: () => {
+                            setEditingItem(item);
+                            setIsModalOpen(true);
+                          },
+                        },
+                        {
+                          label: 'Hapus',
+                          tone: 'danger',
+                          onClick: () => void handleDelete(item),
+                        },
+                      ]}
+                    />
+                  </div>
                 </div>
 
-                {/* Center: 5 Separated HPP Component Chips */}
-                <div className="flex flex-wrap items-center gap-1.5 flex-1">
-                  <span className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] text-[var(--ink-secondary)] tabular-nums">
+                <div className="grid grid-cols-3 gap-2 py-1 lg:hidden">
+                  <div>
+                    <div className="text-[10px] font-semibold text-[var(--ink-muted)]">HPP / Pcs</div>
+                    <div className="text-xs font-bold text-[var(--ink-primary)] tabular-nums">
+                      {formatRp(item.totalHppPerPcs)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-semibold text-[var(--ink-muted)]">Harga Jual</div>
+                    <div className="text-xs font-bold text-[var(--ink-primary)] tabular-nums">
+                      {formatRp(item.defaultPricePerPcs)}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] font-semibold text-[var(--ink-muted)]">Margin</div>
+                    <span
+                      title={`Laba ${formatRp(profit)}/pcs`}
+                      className={`inline-block mt-0.5 px-2 py-0.5 rounded-md text-[11px] font-bold tabular-nums ${
+                        marginPct >= 25
+                          ? 'bg-[#6EEB9A] text-[#14161D]'
+                          : marginPct >= 0
+                          ? 'bg-[#F9DC7E] text-[#14161D]'
+                          : 'bg-[#F29B76] text-[#14161D]'
+                      }`}
+                    >
+                      {marginPct}%
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 sm:grid-cols-5 lg:flex lg:flex-wrap items-center gap-1.5 flex-1">
+                  <span className="px-2 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[10px] sm:text-[11px] text-[var(--ink-secondary)] tabular-nums truncate">
                     Bahan <strong className="text-[var(--ink-primary)]">{formatRp(item.hppBahanBaku)}</strong>
                   </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] text-[var(--ink-secondary)] tabular-nums">
+                  <span className="px-2 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[10px] sm:text-[11px] text-[var(--ink-secondary)] tabular-nums truncate">
                     Tinta <strong className="text-[var(--ink-primary)]">{formatRp(item.hppTintaSablon)}</strong>
                   </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] text-[var(--ink-secondary)] tabular-nums">
+                  <span className="px-2 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[10px] sm:text-[11px] text-[var(--ink-secondary)] tabular-nums truncate">
                     Kerja <strong className="text-[var(--ink-primary)]">{formatRp(item.hppTenagaKerja)}</strong>
                   </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] text-[var(--ink-secondary)] tabular-nums">
+                  <span className="px-2 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[10px] sm:text-[11px] text-[var(--ink-secondary)] tabular-nums truncate">
                     Kemas <strong className="text-[var(--ink-primary)]">{formatRp(item.hppKemasan)}</strong>
                   </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] text-[var(--ink-secondary)] tabular-nums">
+                  <span className="px-2 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[10px] sm:text-[11px] text-[var(--ink-secondary)] tabular-nums truncate">
                     OH <strong className="text-[var(--ink-primary)]">{formatRp(item.hppOverhead)}</strong>
                   </span>
                 </div>
 
-                {/* Right: Total HPP, Selling Price, Margin Pill & Unified Three-Dots */}
-                <div className="flex items-center justify-between lg:justify-end gap-3 shrink-0">
+                <div className="hidden lg:flex items-center justify-end gap-3 shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <div className="text-[10px] font-semibold text-[var(--ink-muted)]">

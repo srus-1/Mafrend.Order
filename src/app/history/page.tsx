@@ -258,62 +258,96 @@ export default function HistoryPage() {
               return (
                 <div
                   key={order.id}
-                  className="p-3.5 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors grid grid-cols-1 lg:grid-cols-12 lg:items-center gap-3"
+                  className="p-3 sm:p-3.5 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors grid grid-cols-1 lg:grid-cols-12 lg:items-center gap-2 lg:gap-3"
                 >
-                  <div className="lg:col-span-3 flex items-center gap-3 min-w-0">
-                    <div className="px-2.5 py-1.5 rounded-lg bg-[var(--bg-chip-on-row)] text-xs font-bold text-[var(--ink-primary)] tabular-nums shrink-0">
-                      #{order.orderNumber}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold text-[var(--ink-primary)] truncate">
-                        {order.buyerName}
+                  <div className="lg:col-span-3 flex items-center justify-between lg:justify-start gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="px-2 py-1.5 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] sm:text-xs font-bold text-[var(--ink-primary)] tabular-nums shrink-0">
+                        #{order.orderNumber}
                       </div>
-                      <div className="flex items-center gap-1.5 text-[11px] text-[var(--ink-muted)] mt-0.5 truncate">
-                        <span className="shrink-0">{formatDateShort(order.orderDate)}</span>
-                        <span>•</span>
-                        <a
-                          href={waUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 hover:text-[var(--ink-primary)] truncate"
-                        >
-                          <MessageCircle className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{order.buyerPhone}</span>
-                        </a>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-[var(--ink-primary)] truncate">
+                          {order.buyerName}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px] text-[var(--ink-muted)] mt-0.5 truncate">
+                          <span className="shrink-0">{formatDateShort(order.orderDate)}</span>
+                          <span>•</span>
+                          <a
+                            href={waUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 hover:text-[var(--ink-primary)] truncate"
+                          >
+                            <MessageCircle className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{order.buyerPhone}</span>
+                          </a>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="lg:col-span-4 min-w-0">
-                    <div className="text-xs font-semibold text-[var(--ink-primary)] line-clamp-1">
-                      {order.productName}
+                    <div className="lg:hidden shrink-0">
+                      <ActionMenuDropdown
+                        ariaLabel={`Menu aksi arsip ${order.orderNumber}`}
+                        items={[
+                          { label: 'Edit', onClick: () => openEditModal(order) },
+                          {
+                            label: `Lihat berkas (${filesCount})`,
+                            onClick: () => setActiveDrawerOrder(order),
+                          },
+                          {
+                            label: 'Hapus',
+                            tone: 'danger',
+                            onClick: () => {
+                              if (confirm(`Hapus arsip pesanan ${order.orderNumber}?`)) {
+                                deleteOrder(order.id);
+                              }
+                            },
+                          },
+                        ]}
+                      />
                     </div>
-                    <div className="text-[11px] text-[var(--ink-muted)] line-clamp-1 mt-0.5">
-                      {order.specs || 'Spesifikasi standar'}
+                  </div>
+
+                  <div className="flex items-start justify-between gap-2.5 lg:contents">
+                    <div className="lg:col-span-4 min-w-0 flex-1">
+                      <div className="text-xs font-semibold text-[var(--ink-primary)] line-clamp-1">
+                        {order.productName}
+                      </div>
+                      <div className="text-[11px] text-[var(--ink-muted)] line-clamp-1 mt-0.5">
+                        {order.specs || 'Spesifikasi standar'}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="lg:col-span-1 flex items-center">
-                    <span className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] font-bold text-[var(--ink-primary)] tabular-nums whitespace-nowrap">
-                      {order.qty.toLocaleString('id-ID')} pcs
-                    </span>
-                  </div>
-
-                  <div className="lg:col-span-2 flex items-center justify-between lg:block lg:text-right">
-                    <span className="text-[11px] font-semibold text-[var(--ink-muted)] lg:hidden">
-                      Omzet & Laba
-                    </span>
-                    <div>
-                      <div className="text-xs font-bold text-[var(--ink-primary)] tabular-nums">
+                    <div className="lg:hidden shrink-0 text-right">
+                      <div className="text-xs font-bold text-[var(--ink-primary)] tabular-nums whitespace-nowrap">
                         {formatRp(order.omzet)}
                       </div>
-                      <div className="text-[11px] font-bold text-[var(--ink-profit)] tabular-nums">
+                      <div className="text-[11px] font-bold text-[var(--ink-profit)] tabular-nums whitespace-nowrap mt-0.5">
                         +{formatRp(order.profit)} ({order.marginPct}%)
                       </div>
                     </div>
                   </div>
 
-                  <div className="lg:col-span-2 flex items-center justify-between lg:justify-end gap-2">
+                  <div className="hidden lg:flex lg:col-span-1 items-center">
+                    <span className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] font-bold text-[var(--ink-primary)] tabular-nums whitespace-nowrap">
+                      {order.qty.toLocaleString('id-ID')} pcs
+                    </span>
+                  </div>
+
+                  <div className="hidden lg:block lg:col-span-2 lg:text-right">
+                    <div className="text-xs font-bold text-[var(--ink-primary)] tabular-nums">
+                      {formatRp(order.omzet)}
+                    </div>
+                    <div className="text-[11px] font-bold text-[var(--ink-profit)] tabular-nums">
+                      +{formatRp(order.profit)} ({order.marginPct}%)
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-2 flex items-center justify-between lg:justify-end gap-2 pt-0.5 lg:pt-0">
+                    <span className="lg:hidden px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] font-bold text-[var(--ink-primary)] tabular-nums whitespace-nowrap">
+                      {order.qty.toLocaleString('id-ID')} pcs
+                    </span>
+
                     <span
                       className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap ${
                         order.paymentStatus === 'LUNAS'
@@ -330,25 +364,27 @@ export default function HistoryPage() {
                         : 'Belum lunas'}
                     </span>
 
-                    <ActionMenuDropdown
-                      ariaLabel={`Menu aksi arsip ${order.orderNumber}`}
-                      items={[
-                        { label: 'Edit', onClick: () => openEditModal(order) },
-                        {
-                          label: `Lihat berkas (${filesCount})`,
-                          onClick: () => setActiveDrawerOrder(order),
-                        },
-                        {
-                          label: 'Hapus',
-                          tone: 'danger',
-                          onClick: () => {
-                            if (confirm(`Hapus arsip pesanan ${order.orderNumber}?`)) {
-                              deleteOrder(order.id);
-                            }
+                    <div className="hidden lg:block shrink-0">
+                      <ActionMenuDropdown
+                        ariaLabel={`Menu aksi arsip ${order.orderNumber}`}
+                        items={[
+                          { label: 'Edit', onClick: () => openEditModal(order) },
+                          {
+                            label: `Lihat berkas (${filesCount})`,
+                            onClick: () => setActiveDrawerOrder(order),
                           },
-                        },
-                      ]}
-                    />
+                          {
+                            label: 'Hapus',
+                            tone: 'danger',
+                            onClick: () => {
+                              if (confirm(`Hapus arsip pesanan ${order.orderNumber}?`)) {
+                                deleteOrder(order.id);
+                              }
+                            },
+                          },
+                        ]}
+                      />
+                    </div>
                   </div>
                 </div>
               );

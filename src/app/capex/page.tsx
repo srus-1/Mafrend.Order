@@ -631,10 +631,10 @@ export default function CapexPage() {
               {filteredCapex.map((item) => (
                 <div
                   key={item.id}
-                  className="p-3.5 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors grid grid-cols-1 lg:grid-cols-12 lg:items-center gap-3"
+                  className="p-3 sm:p-3.5 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors grid grid-cols-1 lg:grid-cols-12 lg:items-center gap-1.5 lg:gap-3"
                 >
-                  <div className="lg:col-span-4 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
+                  <div className="lg:col-span-4 flex items-center justify-between gap-2 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                       <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)] truncate">
                         {item.itemName}
                       </span>
@@ -642,43 +642,77 @@ export default function CapexPage() {
                         {item.category}
                       </span>
                     </div>
-                  </div>
 
-                  <div className="lg:col-span-2 text-[11px] font-medium text-[var(--ink-muted)] tabular-nums">
-                    {formatDateShort(item.entryDate)}
-                  </div>
-
-                  <div className="lg:col-span-3 text-xs text-[var(--ink-secondary)] line-clamp-1">
-                    {item.description || '-'}
-                  </div>
-
-                  <div className="lg:col-span-3 flex items-center justify-between lg:justify-end gap-3">
-                    <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)] tabular-nums">
-                      {formatRp(item.amount)}
-                    </span>
-
-                    <ActionMenuDropdown
-                      ariaLabel={`Menu aksi ${item.itemName}`}
-                      items={[
-                        {
-                          label: 'Edit',
-                          onClick: () => {
-                            setEditingCapex(item);
-                            setIsCapexModalOpen(true);
+                    <div className="lg:hidden shrink-0">
+                      <ActionMenuDropdown
+                        ariaLabel={`Menu aksi ${item.itemName}`}
+                        items={[
+                          {
+                            label: 'Edit',
+                            onClick: () => {
+                              setEditingCapex(item);
+                              setIsCapexModalOpen(true);
+                            },
                           },
-                        },
-                        {
-                          label: 'Hapus',
-                          tone: 'danger',
-                          onClick: () =>
-                            setDeletingTarget({
-                              type: 'capex',
-                              id: item.id,
-                              title: item.itemName,
-                            }),
-                        },
-                      ]}
-                    />
+                          {
+                            label: 'Hapus',
+                            tone: 'danger',
+                            onClick: () =>
+                              setDeletingTarget({
+                                type: 'capex',
+                                id: item.id,
+                                title: item.itemName,
+                              }),
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 lg:contents">
+                    <div className="lg:hidden min-w-0 flex-1 text-[11px] text-[var(--ink-muted)] truncate">
+                      <span className="tabular-nums">{formatDateShort(item.entryDate)}</span>
+                      {item.description && <span> · {item.description}</span>}
+                    </div>
+
+                    <div className="hidden lg:block lg:col-span-2 text-[11px] font-medium text-[var(--ink-muted)] tabular-nums">
+                      {formatDateShort(item.entryDate)}
+                    </div>
+
+                    <div className="hidden lg:block lg:col-span-3 text-xs text-[var(--ink-secondary)] line-clamp-1">
+                      {item.description || '-'}
+                    </div>
+
+                    <div className="lg:col-span-3 flex items-center justify-end gap-3 shrink-0">
+                      <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)] tabular-nums whitespace-nowrap">
+                        {formatRp(item.amount)}
+                      </span>
+
+                      <div className="hidden lg:block shrink-0">
+                        <ActionMenuDropdown
+                          ariaLabel={`Menu aksi ${item.itemName}`}
+                          items={[
+                            {
+                              label: 'Edit',
+                              onClick: () => {
+                                setEditingCapex(item);
+                                setIsCapexModalOpen(true);
+                              },
+                            },
+                            {
+                              label: 'Hapus',
+                              tone: 'danger',
+                              onClick: () =>
+                                setDeletingTarget({
+                                  type: 'capex',
+                                  id: item.id,
+                                  title: item.itemName,
+                                }),
+                            },
+                          ]}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -753,25 +787,56 @@ export default function CapexPage() {
               {filteredMaterials.map((item) => (
                 <div
                   key={item.id}
-                  className="p-3.5 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors grid grid-cols-1 lg:grid-cols-12 lg:items-center gap-3"
+                  className="p-3 sm:p-3.5 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)]/70 transition-colors grid grid-cols-1 lg:grid-cols-12 lg:items-center gap-1.5 lg:gap-3"
                 >
-                  <div className="lg:col-span-4 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)] truncate">
-                        {item.materialName}
-                      </span>
-                      <span className="px-2 py-0.5 rounded-md bg-[#F9DC7E] text-[#14161D] text-[10px] font-bold shrink-0">
-                        {item.category}
-                      </span>
-                    </div>
-                    {item.notes && (
-                      <div className="text-[11px] text-[var(--ink-muted)] truncate mt-0.5">
-                        {item.notes}
+                  <div className="lg:col-span-4 flex items-start justify-between gap-2 min-w-0">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)] truncate">
+                          {item.materialName}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md bg-[#F9DC7E] text-[#14161D] text-[10px] font-bold shrink-0">
+                          {item.category}
+                        </span>
                       </div>
-                    )}
+                      <div className="lg:hidden text-[11px] text-[var(--ink-muted)] truncate mt-0.5">
+                        {item.supplier ? `${item.supplier} · ` : ''}
+                        <span className="tabular-nums">{formatDateShort(item.entryDate)}</span>
+                      </div>
+                      {item.notes && (
+                        <div className="hidden lg:block text-[11px] text-[var(--ink-muted)] truncate mt-0.5">
+                          {item.notes}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="lg:hidden shrink-0">
+                      <ActionMenuDropdown
+                        ariaLabel={`Menu aksi ${item.materialName}`}
+                        items={[
+                          {
+                            label: 'Edit',
+                            onClick: () => {
+                              setEditingMaterial(item);
+                              setIsMaterialModalOpen(true);
+                            },
+                          },
+                          {
+                            label: 'Hapus',
+                            tone: 'danger',
+                            onClick: () =>
+                              setDeletingTarget({
+                                type: 'material',
+                                id: item.id,
+                                title: item.materialName,
+                              }),
+                          },
+                        ]}
+                      />
+                    </div>
                   </div>
 
-                  <div className="lg:col-span-3 min-w-0 text-[11px] text-[var(--ink-secondary)]">
+                  <div className="hidden lg:block lg:col-span-3 min-w-0 text-[11px] text-[var(--ink-secondary)]">
                     <div className="font-semibold text-[var(--ink-primary)] truncate">
                       {item.supplier || '-'}
                     </div>
@@ -780,39 +845,43 @@ export default function CapexPage() {
                     </div>
                   </div>
 
-                  <div className="lg:col-span-2 flex items-center">
-                    <span className="px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[11px] font-bold text-[var(--ink-primary)] tabular-nums whitespace-nowrap">
-                      {item.quantity} {item.unit} @ {formatRp(item.unitPrice)}
-                    </span>
-                  </div>
+                  <div className="flex items-center justify-between gap-2 pt-0.5 lg:pt-0 lg:contents">
+                    <div className="lg:col-span-2 flex items-center">
+                      <span className="px-2 sm:px-2.5 py-1 rounded-lg bg-[var(--bg-chip-on-row)] text-[10px] sm:text-[11px] font-bold text-[var(--ink-primary)] tabular-nums whitespace-nowrap">
+                        {item.quantity} {item.unit} @ {formatRp(item.unitPrice)}
+                      </span>
+                    </div>
 
-                  <div className="lg:col-span-3 flex items-center justify-between lg:justify-end gap-3">
-                    <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)] tabular-nums text-right">
-                      {formatRp(item.totalAmount)}
-                    </span>
+                    <div className="lg:col-span-3 flex items-center justify-end gap-3 shrink-0">
+                      <span className="text-xs sm:text-sm font-bold text-[var(--ink-primary)] tabular-nums text-right whitespace-nowrap">
+                        {formatRp(item.totalAmount)}
+                      </span>
 
-                    <ActionMenuDropdown
-                      ariaLabel={`Menu aksi ${item.materialName}`}
-                      items={[
-                        {
-                          label: 'Edit',
-                          onClick: () => {
-                            setEditingMaterial(item);
-                            setIsMaterialModalOpen(true);
-                          },
-                        },
-                        {
-                          label: 'Hapus',
-                          tone: 'danger',
-                          onClick: () =>
-                            setDeletingTarget({
-                              type: 'material',
-                              id: item.id,
-                              title: item.materialName,
-                            }),
-                        },
-                      ]}
-                    />
+                      <div className="hidden lg:block shrink-0">
+                        <ActionMenuDropdown
+                          ariaLabel={`Menu aksi ${item.materialName}`}
+                          items={[
+                            {
+                              label: 'Edit',
+                              onClick: () => {
+                                setEditingMaterial(item);
+                                setIsMaterialModalOpen(true);
+                              },
+                            },
+                            {
+                              label: 'Hapus',
+                              tone: 'danger',
+                              onClick: () =>
+                                setDeletingTarget({
+                                  type: 'material',
+                                  id: item.id,
+                                  title: item.materialName,
+                                }),
+                            },
+                          ]}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
