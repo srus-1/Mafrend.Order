@@ -1,4 +1,3 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import {
   Order,
   CreateOrderInput,
@@ -9,94 +8,18 @@ import {
   ProcessStatus,
   PaymentStatus,
 } from '@/types/order';
-import {
-  CapexEntry,
-  CreateCapexInput,
-  RawMaterialEntry,
-  CreateRawMaterialInput,
-} from '@/types/capex';
 import { calculateHPP, calculateMargin } from './utils';
+import {
+  supabase,
+  isSupabaseConfigured,
+  getSupabaseConfigStatus,
+  notifyIfAuthError,
+} from './services/client';
 
-// ============================================================================
-// Supabase Configuration Status Detection
-// ============================================================================
-
-export interface SupabaseConfigStatus {
-  isConfigured: boolean;
-  reason?: string;
-}
-
-export function getSupabaseConfigStatus(): SupabaseConfigStatus {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = (
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-  )?.trim();
-
-  if (!url || !key) {
-    return {
-      isConfigured: false,
-      reason: 'URL atau Anon Key belum disetel di environment variables.',
-    };
-  }
-
-  const placeholderTokens = [
-    'project-id-kamu',
-    'your-project',
-    'placeholder',
-    'example.com',
-    '...',
-    '<your-anon-key>',
-    '<your-supabase-url>',
-  ];
-
-  const hasPlaceholder = placeholderTokens.some(
-    (token) => url.toLowerCase().includes(token) || key.toLowerCase().includes(token)
-  );
-
-  if (hasPlaceholder) {
-    return {
-      isConfigured: false,
-      reason: 'Environment variables masih menggunakan nilai placeholder.',
-    };
-  }
-
-  try {
-    const parsed = new URL(url);
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      return {
-        isConfigured: false,
-        reason: 'Protokol URL Supabase harus diawali http:// atau https://.',
-      };
-    }
-  } catch {
-    return {
-      isConfigured: false,
-      reason: 'Format NEXT_PUBLIC_SUPABASE_URL tidak valid.',
-    };
-  }
-
-  if (key.length < 20) {
-    return {
-      isConfigured: false,
-      reason: 'NEXT_PUBLIC_SUPABASE_ANON_KEY tampak tidak valid atau terlalu pendek.',
-    };
-  }
-
-  return { isConfigured: true };
-}
-
-export const isSupabaseConfigured = getSupabaseConfigStatus().isConfigured;
-
-export const supabase: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-      (
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-      )!.trim()
-    )
-  : null;
+export type { SupabaseConfigStatus } from './services/client';
+export { supabase, isSupabaseConfigured, getSupabaseConfigStatus, notifyIfAuthError };
+export * from './services/capexService';
+export * from './services/catalogService';
 
 // ============================================================================
 // Database Row Mapping Types (PostgreSQL snake_case <-> TypeScript camelCase)
@@ -198,13 +121,90 @@ export function mapDbOrderToDomain(row: DbOrderRow): Order {
   };
 }
 
+async function resolveNextOrderCodeAndQueue(
+  prefix: string,
+  year: number
+): Promise<{ orderNumber: string; queueOrder: number }> {
+  if (!supabase) {
+    return {
+      orderNumber: `${prefix}${String(Math.floor(Math.random() * 900) + 100)}`,
+      queueOrder: 1,
+    };
+  }
+
+  // Try atomic database sequence RPC first (from 20261125010000_hardening_rls_and_rpc.sql)
+  const [rpcRes, topQueueRes] = await Promise.all([
+    supabase.rpc('next_order_number', { p_prefix: prefix }),
+    supabase
+      .from('orders')
+      .select('queue_order')
+      .order('queue_order', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const maxQueue = Number(topQueueRes.data?.queue_order) || 0;
+  if (!rpcRes.error && typeof rpcRes.data === 'string' && rpcRes.data.trim()) {
+    return {
+      orderNumber: rpcRes.data.trim(),
+      queueOrder: maxQueue + 1,
+    };
+  }
+
+  // Fallback when RPC migration has not been applied yet
+  const { data: existingOrders } = await supabase
+    .from('orders')
+    .select('order_number, queue_order')
+    .limit(1000);
+
+  let maxSeq = 0;
+  let fallbackMaxQueue = maxQueue;
+  const existingNumbers = new Set<string>();
+
+  (existingOrders || []).forEach(
+    (row: { order_number?: string; queue_order?: number }) => {
+      if (row.order_number) {
+        existingNumbers.add(row.order_number);
+        let seqPart = '';
+        if (row.order_number.startsWith(prefix)) {
+          seqPart = row.order_number.slice(prefix.length);
+        } else if (row.order_number.startsWith(`MF${year}`)) {
+          seqPart = row.order_number.slice(`MF${year}`.length);
+        } else if (row.order_number.includes('-')) {
+          seqPart = row.order_number.split('-').pop() || '';
+        }
+        const num = parseInt(seqPart, 10);
+        if (!isNaN(num) && num > maxSeq) {
+          maxSeq = num;
+        }
+      }
+      const q = Number(row.queue_order) || 0;
+      if (q > fallbackMaxQueue) {
+        fallbackMaxQueue = q;
+      }
+    }
+  );
+
+  let nextSeq = maxSeq + 1;
+  let orderNumber = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+  while (existingNumbers.has(orderNumber)) {
+    nextSeq++;
+    orderNumber = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+  }
+
+  return {
+    orderNumber,
+    queueOrder: fallbackMaxQueue + 1,
+  };
+}
+
 // ============================================================================
 // Authentic Supabase Order Service
 // ============================================================================
 
 export const orderService = {
   /**
-   * Fetches all production orders sorted by queue order.
+   * Fetches production orders sorted by queue order (bounded to 1000 rows).
    * Returns empty array `[]` cleanly when unconfigured or on error.
    */
   async getOrders(): Promise<Order[]> {
@@ -216,15 +216,18 @@ export const orderService = {
       const { data, error } = await supabase
         .from('orders')
         .select('*, order_design_files(*)')
-        .order('queue_order', { ascending: true });
+        .order('queue_order', { ascending: true })
+        .limit(1000);
 
       if (error) {
+        notifyIfAuthError(error);
         console.error('Error fetching orders from Supabase:', error);
         return [];
       }
 
       return (data as DbOrderRow[]).map(mapDbOrderToDomain);
     } catch (err) {
+      notifyIfAuthError(err);
       console.error('Unexpected error fetching orders:', err);
       return [];
     }
@@ -244,19 +247,24 @@ export const orderService = {
         .maybeSingle();
 
       if (error || !data) {
-        if (error) console.error('Error fetching order by ID:', error);
+        if (error) {
+          notifyIfAuthError(error);
+          console.error('Error fetching order by ID:', error);
+        }
         return null;
       }
 
       return mapDbOrderToDomain(data as DbOrderRow);
     } catch (err) {
+      notifyIfAuthError(err);
       console.error('Unexpected error in getOrderById:', err);
       return null;
     }
   },
 
   /**
-   * Creates a new production order with automatic code generation, HPP, and profit margins.
+   * Creates a new production order with atomic sequence generation, HPP, and profit margins.
+   * Automatically retries on unique order_number collision (23505).
    */
   async createOrder(newOrderData: CreateOrderInput): Promise<Order> {
     const safeQty = Math.max(1, newOrderData.qty || 1);
@@ -283,8 +291,7 @@ export const orderService = {
     const prefix = `MF${shortYear}`;
 
     if (!supabase) {
-      // Degraded in-memory fallback object
-      const fallbackOrder: Order = {
+      return {
         id: `ord-${Date.now()}`,
         orderNumber: `${prefix}${String(Math.floor(Math.random() * 900) + 100)}`,
         orderDate: newOrderData.orderDate || now.toISOString().split('T')[0],
@@ -309,90 +316,64 @@ export const orderService = {
         createdAt: now.toISOString(),
         updatedAt: now.toISOString(),
       };
-      return fallbackOrder;
     }
 
-    // Determine next unique order number (max sequence + 1) and queue order
-    const { data: existingOrders } = await supabase
-      .from('orders')
-      .select('order_number, queue_order');
+    const maxAttempts = 3;
+    let lastError: unknown = null;
 
-    let maxSeq = 0;
-    let maxQueue = 0;
-    const existingNumbers = new Set<string>();
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const { orderNumber, queueOrder } = await resolveNextOrderCodeAndQueue(prefix, year);
 
-    (existingOrders || []).forEach(
-      (row: { order_number?: string; queue_order?: number }) => {
-        if (row.order_number) {
-          existingNumbers.add(row.order_number);
-          let seqPart = '';
-          if (row.order_number.startsWith(prefix)) {
-            seqPart = row.order_number.slice(prefix.length);
-          } else if (row.order_number.startsWith(`MF${year}`)) {
-            seqPart = row.order_number.slice(`MF${year}`.length);
-          } else if (row.order_number.includes('-')) {
-            seqPart = row.order_number.split('-').pop() || '';
-          }
-          const num = parseInt(seqPart, 10);
-          if (!isNaN(num) && num > maxSeq) {
-            maxSeq = num;
-          }
-        }
-        const q = Number(row.queue_order) || 0;
-        if (q > maxQueue) {
-          maxQueue = q;
-        }
+      const dbPayload = {
+        order_number: orderNumber,
+        order_date: newOrderData.orderDate || now.toISOString().split('T')[0],
+        deadline: newOrderData.deadline,
+        buyer_name: newOrderData.buyerName,
+        buyer_phone: newOrderData.buyerPhone,
+        product_name: newOrderData.productName,
+        specs: newOrderData.specs || '',
+        qty: safeQty,
+        price_per_pcs: safePrice,
+        omzet,
+        hpp_bahan_baku: calculatedHpp.bahanBaku,
+        hpp_tinta_sablon: calculatedHpp.tintaSablon,
+        hpp_tenaga_kerja: calculatedHpp.tenagaKerja,
+        hpp_kemasan: calculatedHpp.kemasan,
+        hpp_overhead: calculatedHpp.overhead,
+        total_hpp_per_pcs: calculatedHpp.totalHppPerPcs,
+        total_hpp: calculatedHpp.totalHpp,
+        profit,
+        margin_pct: marginPct,
+        payment_status: newOrderData.paymentStatus,
+        dp_amount: dpAmount,
+        remaining_payment: remainingPayment,
+        process_status: newOrderData.processStatus,
+        queue_order: queueOrder,
+        notes: newOrderData.notes || null,
+      };
+
+      const { data, error } = await supabase
+        .from('orders')
+        .insert(dbPayload)
+        .select('*, order_design_files(*)')
+        .single();
+
+      if (!error && data) {
+        return mapDbOrderToDomain(data as DbOrderRow);
       }
-    );
 
-    let nextSeq = maxSeq + 1;
-    let orderNumber = `${prefix}${String(nextSeq).padStart(3, '0')}`;
-    while (existingNumbers.has(orderNumber)) {
-      nextSeq++;
-      orderNumber = `${prefix}${String(nextSeq).padStart(3, '0')}`;
-    }
-    const queueOrder = maxQueue + 1;
+      lastError = error;
+      // Retry only on unique_violation (23505) for order_number race conditions
+      if ((error as { code?: string } | null)?.code === '23505' && attempt < maxAttempts - 1) {
+        continue;
+      }
 
-    const dbPayload = {
-      order_number: orderNumber,
-      order_date: newOrderData.orderDate || now.toISOString().split('T')[0],
-      deadline: newOrderData.deadline,
-      buyer_name: newOrderData.buyerName,
-      buyer_phone: newOrderData.buyerPhone,
-      product_name: newOrderData.productName,
-      specs: newOrderData.specs || '',
-      qty: safeQty,
-      price_per_pcs: safePrice,
-      omzet,
-      hpp_bahan_baku: calculatedHpp.bahanBaku,
-      hpp_tinta_sablon: calculatedHpp.tintaSablon,
-      hpp_tenaga_kerja: calculatedHpp.tenagaKerja,
-      hpp_kemasan: calculatedHpp.kemasan,
-      hpp_overhead: calculatedHpp.overhead,
-      total_hpp_per_pcs: calculatedHpp.totalHppPerPcs,
-      total_hpp: calculatedHpp.totalHpp,
-      profit,
-      margin_pct: marginPct,
-      payment_status: newOrderData.paymentStatus,
-      dp_amount: dpAmount,
-      remaining_payment: remainingPayment,
-      process_status: newOrderData.processStatus,
-      queue_order: queueOrder,
-      notes: newOrderData.notes || null,
-    };
-
-    const { data, error } = await supabase
-      .from('orders')
-      .insert(dbPayload)
-      .select('*, order_design_files(*)')
-      .single();
-
-    if (error) {
+      notifyIfAuthError(error);
       console.error('Error inserting order into Supabase:', error);
       throw error;
     }
 
-    return mapDbOrderToDomain(data as DbOrderRow);
+    throw lastError || new Error('Gagal membuat nomor pesanan unik.');
   },
 
   /**
@@ -469,6 +450,7 @@ export const orderService = {
       .single();
 
     if (error) {
+      notifyIfAuthError(error);
       console.error('Error updating order in Supabase:', error);
       throw error;
     }
@@ -484,6 +466,7 @@ export const orderService = {
 
     const { error } = await supabase.from('orders').delete().eq('id', id);
     if (error) {
+      notifyIfAuthError(error);
       console.error('Error deleting order in Supabase:', error);
       throw error;
     }
@@ -491,12 +474,21 @@ export const orderService = {
   },
 
   /**
-   * Updates queue_order sequence for drag & drop priority queue.
+   * Updates queue_order sequence atomically via batch RPC, falling back to verified updates.
    */
   async reorderOrders(orderedIds: string[]): Promise<void> {
-    if (!supabase) return;
+    if (!supabase || orderedIds.length === 0) return;
 
-    await Promise.all(
+    const { error: rpcError } = await supabase.rpc('reorder_orders_batch', {
+      p_ids: orderedIds,
+    });
+
+    if (!rpcError) {
+      return;
+    }
+
+    // Fallback when RPC migration has not been applied yet
+    const results = await Promise.all(
       orderedIds.map((id, index) =>
         supabase!
           .from('orders')
@@ -504,6 +496,13 @@ export const orderService = {
           .eq('id', id)
       )
     );
+
+    const firstFailed = results.find((r) => r.error)?.error;
+    if (firstFailed) {
+      notifyIfAuthError(firstFailed);
+      console.error('Error reordering orders in Supabase:', firstFailed);
+      throw firstFailed;
+    }
   },
 
   /**
@@ -529,6 +528,7 @@ export const orderService = {
       .upload(storagePath, file, { cacheControl: '3600', upsert: false });
 
     if (uploadError) {
+      notifyIfAuthError(uploadError);
       console.error('Error uploading to Supabase Storage:', uploadError);
       throw uploadError;
     }
@@ -557,6 +557,7 @@ export const orderService = {
       .single();
 
     if (dbError) {
+      notifyIfAuthError(dbError);
       console.error('Error inserting design file record:', dbError);
       throw dbError;
     }
@@ -586,6 +587,7 @@ export const orderService = {
       .single();
 
     if (error) {
+      notifyIfAuthError(error);
       console.error('Error adding design file:', error);
       throw error;
     }
@@ -596,7 +598,11 @@ export const orderService = {
   /**
    * Toggles operator print-readiness flag for an artwork file.
    */
-  async toggleDesignReady(orderId: string, fileId: string, isReady?: boolean): Promise<boolean> {
+  async toggleDesignReady(
+    orderId: string,
+    fileId: string,
+    isReady?: boolean
+  ): Promise<boolean> {
     if (!supabase) return true;
 
     let targetReady = isReady;
@@ -607,7 +613,7 @@ export const orderService = {
         .eq('id', fileId)
         .maybeSingle();
 
-      targetReady = !(data?.is_ready_to_print);
+      targetReady = !data?.is_ready_to_print;
     }
 
     const { error } = await supabase
@@ -616,6 +622,7 @@ export const orderService = {
       .eq('id', fileId);
 
     if (error) {
+      notifyIfAuthError(error);
       console.error('Error toggling design ready status:', error);
       throw error;
     }
@@ -653,6 +660,7 @@ export const orderService = {
       .eq('id', fileId);
 
     if (error) {
+      notifyIfAuthError(error);
       console.error('Error deleting design file record:', error);
       throw error;
     }
@@ -814,644 +822,3 @@ export const orderService = {
     }));
   },
 };
-
-// ============================================================================
-// Capex & Raw Materials Row Mapping
-// ============================================================================
-
-export interface DbCapexRow {
-  id: string;
-  item_name: string;
-  category: string;
-  amount: number | string;
-  entry_date: string;
-  description: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export function mapDbCapexToDomain(row: DbCapexRow): CapexEntry {
-  return {
-    id: row.id,
-    itemName: row.item_name,
-    category: row.category,
-    amount: Number(row.amount) || 0,
-    entryDate: row.entry_date,
-    description: row.description || undefined,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-export interface DbRawMaterialRow {
-  id: string;
-  material_name: string;
-  category: string;
-  supplier: string;
-  quantity: number | string;
-  unit: string;
-  unit_price: number | string;
-  total_amount: number | string;
-  entry_date: string;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export function mapDbRawMaterialToDomain(row: DbRawMaterialRow): RawMaterialEntry {
-  const qty = Number(row.quantity) || 0;
-  return {
-    id: row.id,
-    materialName: row.material_name,
-    category: row.category,
-    supplier: row.supplier,
-    quantity: qty,
-    qty: qty,
-    unit: row.unit,
-    unitPrice: Number(row.unit_price) || 0,
-    totalAmount: Number(row.total_amount) || 0,
-    entryDate: row.entry_date,
-    notes: row.notes || undefined,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-// ============================================================================
-// Capex & Raw Materials In-Memory Stores (Fallback when !supabase, zero storage usage)
-// ============================================================================
-
-let inMemoryCapexEntries: CapexEntry[] = [
-  {
-    id: 'cpx-1',
-    itemName: 'Mesin Laser Cutting Acrylic 60W',
-    category: 'Mesin & Peralatan',
-    amount: 18500000,
-    entryDate: '2026-10-02',
-    description: 'Mesin potong akrilik workshop utama',
-    createdAt: '2026-10-02T08:00:00.000Z',
-    updatedAt: '2026-10-02T08:00:00.000Z',
-  },
-  {
-    id: 'cpx-2',
-    itemName: 'Komputer Desain Corel & Mockup',
-    category: 'Elektronik & IT',
-    amount: 8200000,
-    entryDate: '2026-10-08',
-    description: 'PC operasional setting desain',
-    createdAt: '2026-10-08T09:30:00.000Z',
-    updatedAt: '2026-10-08T09:30:00.000Z',
-  },
-  {
-    id: 'cpx-3',
-    itemName: 'Rak Pengering Sablon 50 Susun',
-    category: 'Perlengkapan Workshop',
-    amount: 2400000,
-    entryDate: '2026-09-15',
-    description: 'Rak pengering hasil cetak sablon',
-    createdAt: '2026-09-15T11:00:00.000Z',
-    updatedAt: '2026-09-15T11:00:00.000Z',
-  },
-  {
-    id: 'cpx-4',
-    itemName: 'Mesin Press Heat & Laminasi 38x38',
-    category: 'Mesin & Peralatan',
-    amount: 3750000,
-    entryDate: '2026-08-20',
-    description: 'Alat press gantungan kunci double sided',
-    createdAt: '2026-08-20T14:15:00.000Z',
-    updatedAt: '2026-08-20T14:15:00.000Z',
-  },
-];
-
-let inMemoryRawMaterialEntries: RawMaterialEntry[] = [
-  {
-    id: 'mat-1',
-    materialName: 'Lembaran Akrilik Bening 3mm (122x244cm)',
-    category: 'Akrilik & Aksesoris',
-    supplier: 'CV Akrilik Sentosa',
-    quantity: 10,
-    qty: 10,
-    unit: 'lembar',
-    unitPrice: 380000,
-    totalAmount: 3800000,
-    entryDate: '2026-10-04',
-    notes: 'Bahan dasar gantungan kunci standard',
-    createdAt: '2026-10-04T07:30:00.000Z',
-    updatedAt: '2026-10-04T07:30:00.000Z',
-  },
-  {
-    id: 'mat-2',
-    materialName: 'Ring Gantungan Kunci Putar + Rantai',
-    category: 'Akrilik & Aksesoris',
-    supplier: 'Toko Aksesoris Jaya',
-    quantity: 2000,
-    qty: 2000,
-    unit: 'pcs',
-    unitPrice: 450,
-    totalAmount: 900000,
-    entryDate: '2026-10-06',
-    notes: 'Gantungan kunci ring silver',
-    createdAt: '2026-10-06T10:00:00.000Z',
-    updatedAt: '2026-10-06T10:00:00.000Z',
-  },
-  {
-    id: 'mat-3',
-    materialName: 'Tinta Sablon Plastisol Super White 1kg',
-    category: 'Tinta & Sablon',
-    supplier: 'Multi Screen Printing',
-    quantity: 4,
-    qty: 4,
-    unit: 'kg',
-    unitPrice: 175000,
-    totalAmount: 700000,
-    entryDate: '2026-10-12',
-    notes: 'Tinta sablon dasar putih',
-    createdAt: '2026-10-12T13:45:00.000Z',
-    updatedAt: '2026-10-12T13:45:00.000Z',
-  },
-  {
-    id: 'mat-4',
-    materialName: 'Plastik OPP Seal 6x10cm + Hang Tag',
-    category: 'Kemasan & Packaging',
-    supplier: 'Mitra Packindo',
-    quantity: 3000,
-    qty: 3000,
-    unit: 'pcs',
-    unitPrice: 120,
-    totalAmount: 360000,
-    entryDate: '2026-09-18',
-    notes: 'Kemasan plastik satuan souvenir',
-    createdAt: '2026-09-18T09:00:00.000Z',
-    updatedAt: '2026-09-18T09:00:00.000Z',
-  },
-  {
-    id: 'mat-5',
-    materialName: 'Mata Pisau Cutter Akrilik Olfa P-800',
-    category: 'Sparepart & Consumable',
-    supplier: 'Teknik Prima Tools',
-    quantity: 5,
-    qty: 5,
-    unit: 'pack',
-    unitPrice: 85000,
-    totalAmount: 425000,
-    entryDate: '2026-08-25',
-    notes: 'Mata pisau potong cadangan',
-    createdAt: '2026-08-25T15:20:00.000Z',
-    updatedAt: '2026-08-25T15:20:00.000Z',
-  },
-];
-
-// ============================================================================
-// Authentic Supabase Capex Service
-// ============================================================================
-
-export const capexService = {
-  /**
-   * Fetches all capital expenditure records sorted by entry_date descending.
-   * Returns in-memory fallback when unconfigured or on error.
-   */
-  async getCapexEntries(): Promise<CapexEntry[]> {
-    if (!supabase) {
-      return [...inMemoryCapexEntries];
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('capex_entries')
-        .select('*')
-        .order('entry_date', { ascending: false })
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.warn('Supabase capex_entries fallback to in-memory:', error.message || error);
-        return [...inMemoryCapexEntries];
-      }
-
-      return (data as DbCapexRow[]).map(mapDbCapexToDomain);
-    } catch (err) {
-      console.warn('Unexpected error fetching capex entries (using in-memory fallback):', err);
-      return [...inMemoryCapexEntries];
-    }
-  },
-
-  /**
-   * Creates a new capital expenditure record.
-   */
-  async createCapexEntry(input: CreateCapexInput): Promise<CapexEntry> {
-    const nowIso = new Date().toISOString();
-    const safeAmount = Math.max(0, Number(input.amount) || 0);
-
-    if (!supabase) {
-      const newEntry: CapexEntry = {
-        id: `cpx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        itemName: input.itemName.trim(),
-        category: input.category,
-        amount: safeAmount,
-        entryDate: input.entryDate || nowIso.split('T')[0],
-        description: input.description?.trim() || undefined,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-      };
-      inMemoryCapexEntries = [newEntry, ...inMemoryCapexEntries];
-      return newEntry;
-    }
-
-    try {
-      const payload = {
-        item_name: input.itemName.trim(),
-        category: input.category,
-        amount: safeAmount,
-        entry_date: input.entryDate || nowIso.split('T')[0],
-        description: input.description?.trim() || null,
-      };
-
-      const { data, error } = await supabase
-        .from('capex_entries')
-        .insert(payload)
-        .select('*')
-        .single();
-
-      if (error || !data) {
-        throw new Error(error?.message || 'Gagal menyimpan data capex');
-      }
-
-      return mapDbCapexToDomain(data as DbCapexRow);
-    } catch (err) {
-      console.warn('Supabase createCapexEntry fallback to in-memory:', err);
-      const fallbackEntry: CapexEntry = {
-        id: `cpx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        itemName: input.itemName.trim(),
-        category: input.category,
-        amount: safeAmount,
-        entryDate: input.entryDate || nowIso.split('T')[0],
-        description: input.description?.trim() || undefined,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-      };
-      inMemoryCapexEntries = [fallbackEntry, ...inMemoryCapexEntries];
-      return fallbackEntry;
-    }
-  },
-
-  /**
-   * Updates an existing capital expenditure record.
-   */
-  async updateCapexEntry(
-    id: string,
-    updates: Partial<CreateCapexInput>
-  ): Promise<CapexEntry | null> {
-    const nowIso = new Date().toISOString();
-
-    if (!supabase) {
-      const index = inMemoryCapexEntries.findIndex((e) => e.id === id);
-      if (index === -1) return null;
-
-      const current = inMemoryCapexEntries[index];
-      const updated: CapexEntry = {
-        ...current,
-        ...(updates.itemName !== undefined && { itemName: updates.itemName.trim() }),
-        ...(updates.category !== undefined && { category: updates.category }),
-        ...(updates.amount !== undefined && { amount: Math.max(0, Number(updates.amount) || 0) }),
-        ...(updates.entryDate !== undefined && { entryDate: updates.entryDate }),
-        ...(updates.description !== undefined && { description: updates.description.trim() || undefined }),
-        updatedAt: nowIso,
-      };
-      inMemoryCapexEntries[index] = updated;
-      return updated;
-    }
-
-    try {
-      const payload: Record<string, unknown> = {
-        updated_at: nowIso,
-      };
-      if (updates.itemName !== undefined) payload.item_name = updates.itemName.trim();
-      if (updates.category !== undefined) payload.category = updates.category;
-      if (updates.amount !== undefined) payload.amount = Math.max(0, Number(updates.amount) || 0);
-      if (updates.entryDate !== undefined) payload.entry_date = updates.entryDate;
-      if (updates.description !== undefined) payload.description = updates.description.trim() || null;
-
-      const { data, error } = await supabase
-        .from('capex_entries')
-        .update(payload)
-        .eq('id', id)
-        .select('*')
-        .single();
-
-      if (error || !data) {
-        throw new Error(error?.message || 'Gagal memperbarui data capex');
-      }
-
-      return mapDbCapexToDomain(data as DbCapexRow);
-    } catch (err) {
-      console.warn('Supabase updateCapexEntry fallback to in-memory:', err);
-      const index = inMemoryCapexEntries.findIndex((e) => e.id === id);
-      if (index === -1) return null;
-      const current = inMemoryCapexEntries[index];
-      const updated: CapexEntry = {
-        ...current,
-        ...(updates.itemName !== undefined && { itemName: updates.itemName.trim() }),
-        ...(updates.category !== undefined && { category: updates.category }),
-        ...(updates.amount !== undefined && { amount: Math.max(0, Number(updates.amount) || 0) }),
-        ...(updates.entryDate !== undefined && { entryDate: updates.entryDate }),
-        ...(updates.description !== undefined && { description: updates.description.trim() || undefined }),
-        updatedAt: nowIso,
-      };
-      inMemoryCapexEntries[index] = updated;
-      return updated;
-    }
-  },
-
-  /**
-   * Deletes a capital expenditure record.
-   */
-  async deleteCapexEntry(id: string): Promise<boolean> {
-    if (!supabase) {
-      inMemoryCapexEntries = inMemoryCapexEntries.filter((e) => e.id !== id);
-      return true;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('capex_entries')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.warn('Supabase deleteCapexEntry fallback to in-memory:', error.message || error);
-        inMemoryCapexEntries = inMemoryCapexEntries.filter((e) => e.id !== id);
-        return true;
-      }
-      return true;
-    } catch (err) {
-      console.warn('Unexpected error deleting capex entry (using in-memory fallback):', err);
-      inMemoryCapexEntries = inMemoryCapexEntries.filter((e) => e.id !== id);
-      return true;
-    }
-  },
-};
-
-// ============================================================================
-// Authentic Supabase Raw Material Service
-// ============================================================================
-
-export const rawMaterialService = {
-  /**
-   * Fetches all recurring raw material purchase records sorted by entry_date descending.
-   * Returns in-memory fallback when unconfigured or on error.
-   */
-  async getRawMaterialEntries(): Promise<RawMaterialEntry[]> {
-    if (!supabase) {
-      return [...inMemoryRawMaterialEntries];
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('raw_material_entries')
-        .select('*')
-        .order('entry_date', { ascending: false })
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.warn('Supabase raw_material_entries fallback to in-memory:', error.message || error);
-        return [...inMemoryRawMaterialEntries];
-      }
-
-      return (data as DbRawMaterialRow[]).map(mapDbRawMaterialToDomain);
-    } catch (err) {
-      console.warn('Unexpected error fetching raw material entries (using in-memory fallback):', err);
-      return [...inMemoryRawMaterialEntries];
-    }
-  },
-
-  /**
-   * Creates a new recurring raw material purchase record.
-   * Automatically calculates totalAmount = quantity * unitPrice.
-   */
-  async createRawMaterialEntry(input: CreateRawMaterialInput): Promise<RawMaterialEntry> {
-    const nowIso = new Date().toISOString();
-    const safeQty = Math.max(0.01, Number(input.quantity ?? input.qty) || 1);
-    const safeUnitPrice = Math.max(0, Number(input.unitPrice) || 0);
-    const calculatedTotal = input.totalAmount !== undefined
-      ? Math.max(0, Number(input.totalAmount) || 0)
-      : Math.round(safeQty * safeUnitPrice);
-
-    if (!supabase) {
-      const newEntry: RawMaterialEntry = {
-        id: `mat-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        materialName: input.materialName.trim(),
-        category: input.category,
-        supplier: input.supplier.trim(),
-        quantity: safeQty,
-        qty: safeQty,
-        unit: input.unit.trim() || 'pcs',
-        unitPrice: safeUnitPrice,
-        totalAmount: calculatedTotal,
-        entryDate: input.entryDate || nowIso.split('T')[0],
-        notes: input.notes?.trim() || undefined,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-      };
-      inMemoryRawMaterialEntries = [newEntry, ...inMemoryRawMaterialEntries];
-      return newEntry;
-    }
-
-    try {
-      const payload = {
-        material_name: input.materialName.trim(),
-        category: input.category,
-        supplier: input.supplier.trim(),
-        quantity: safeQty,
-        unit: input.unit.trim() || 'pcs',
-        unit_price: safeUnitPrice,
-        total_amount: calculatedTotal,
-        entry_date: input.entryDate || nowIso.split('T')[0],
-        notes: input.notes?.trim() || null,
-      };
-
-      const { data, error } = await supabase
-        .from('raw_material_entries')
-        .insert(payload)
-        .select('*')
-        .single();
-
-      if (error || !data) {
-        throw new Error(error?.message || 'Gagal menyimpan data bahan baku');
-      }
-
-      return mapDbRawMaterialToDomain(data as DbRawMaterialRow);
-    } catch (err) {
-      console.warn('Supabase createRawMaterialEntry fallback to in-memory:', err);
-      const fallbackEntry: RawMaterialEntry = {
-        id: `mat-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        materialName: input.materialName.trim(),
-        category: input.category,
-        supplier: input.supplier.trim(),
-        quantity: safeQty,
-        qty: safeQty,
-        unit: input.unit.trim() || 'pcs',
-        unitPrice: safeUnitPrice,
-        totalAmount: calculatedTotal,
-        entryDate: input.entryDate || nowIso.split('T')[0],
-        notes: input.notes?.trim() || undefined,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-      };
-      inMemoryRawMaterialEntries = [fallbackEntry, ...inMemoryRawMaterialEntries];
-      return fallbackEntry;
-    }
-  },
-
-  /**
-   * Updates an existing recurring raw material purchase record.
-   * Recalculates totalAmount if quantity or unitPrice is updated.
-   */
-  async updateRawMaterialEntry(
-    id: string,
-    updates: Partial<CreateRawMaterialInput>
-  ): Promise<RawMaterialEntry | null> {
-    const nowIso = new Date().toISOString();
-
-    if (!supabase) {
-      const index = inMemoryRawMaterialEntries.findIndex((e) => e.id === id);
-      if (index === -1) return null;
-
-      const current = inMemoryRawMaterialEntries[index];
-      const newQty = updates.quantity !== undefined
-        ? Math.max(0.01, Number(updates.quantity) || 1)
-        : current.quantity;
-      const newUnitPrice = updates.unitPrice !== undefined
-        ? Math.max(0, Number(updates.unitPrice) || 0)
-        : current.unitPrice;
-      const newTotal = updates.totalAmount !== undefined
-        ? Math.max(0, Number(updates.totalAmount) || 0)
-        : (updates.quantity !== undefined || updates.unitPrice !== undefined)
-          ? Math.round(newQty * newUnitPrice)
-          : current.totalAmount;
-
-      const updated: RawMaterialEntry = {
-        ...current,
-        ...(updates.materialName !== undefined && { materialName: updates.materialName.trim() }),
-        ...(updates.category !== undefined && { category: updates.category }),
-        ...(updates.supplier !== undefined && { supplier: updates.supplier.trim() }),
-        quantity: newQty,
-        qty: newQty,
-        ...(updates.unit !== undefined && { unit: updates.unit.trim() || 'pcs' }),
-        unitPrice: newUnitPrice,
-        totalAmount: newTotal,
-        ...(updates.entryDate !== undefined && { entryDate: updates.entryDate }),
-        ...(updates.notes !== undefined && { notes: updates.notes.trim() || undefined }),
-        updatedAt: nowIso,
-      };
-      inMemoryRawMaterialEntries[index] = updated;
-      return updated;
-    }
-
-    try {
-      const { data: existingData } = await supabase
-        .from('raw_material_entries')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-
-      const curQty = existingData ? Number(existingData.quantity) || 1 : 1;
-      const curPrice = existingData ? Number(existingData.unit_price) || 0 : 0;
-      const newQty = updates.quantity !== undefined ? Math.max(0.01, Number(updates.quantity) || 1) : curQty;
-      const newUnitPrice = updates.unitPrice !== undefined ? Math.max(0, Number(updates.unitPrice) || 0) : curPrice;
-      const newTotal = updates.totalAmount !== undefined
-        ? Math.max(0, Number(updates.totalAmount) || 0)
-        : (updates.quantity !== undefined || updates.unitPrice !== undefined)
-          ? Math.round(newQty * newUnitPrice)
-          : (existingData ? Number(existingData.total_amount) || 0 : 0);
-
-      const payload: Record<string, unknown> = {
-        updated_at: nowIso,
-      };
-      if (updates.materialName !== undefined) payload.material_name = updates.materialName.trim();
-      if (updates.category !== undefined) payload.category = updates.category;
-      if (updates.supplier !== undefined) payload.supplier = updates.supplier.trim();
-      if (updates.quantity !== undefined) payload.quantity = newQty;
-      if (updates.unit !== undefined) payload.unit = updates.unit.trim() || 'pcs';
-      if (updates.unitPrice !== undefined) payload.unit_price = newUnitPrice;
-      payload.total_amount = newTotal;
-      if (updates.entryDate !== undefined) payload.entry_date = updates.entryDate;
-      if (updates.notes !== undefined) payload.notes = updates.notes.trim() || null;
-
-      const { data, error } = await supabase
-        .from('raw_material_entries')
-        .update(payload)
-        .eq('id', id)
-        .select('*')
-        .single();
-
-      if (error || !data) {
-        throw new Error(error?.message || 'Gagal memperbarui data bahan baku');
-      }
-
-      return mapDbRawMaterialToDomain(data as DbRawMaterialRow);
-    } catch (err) {
-      console.warn('Supabase updateRawMaterialEntry fallback to in-memory:', err);
-      const index = inMemoryRawMaterialEntries.findIndex((e) => e.id === id);
-      if (index === -1) return null;
-
-      const current = inMemoryRawMaterialEntries[index];
-      const newQty = updates.quantity !== undefined
-        ? Math.max(0.01, Number(updates.quantity) || 1)
-        : current.quantity;
-      const newUnitPrice = updates.unitPrice !== undefined
-        ? Math.max(0, Number(updates.unitPrice) || 0)
-        : current.unitPrice;
-      const newTotal = updates.totalAmount !== undefined
-        ? Math.max(0, Number(updates.totalAmount) || 0)
-        : (updates.quantity !== undefined || updates.unitPrice !== undefined)
-          ? Math.round(newQty * newUnitPrice)
-          : current.totalAmount;
-
-      const updated: RawMaterialEntry = {
-        ...current,
-        ...(updates.materialName !== undefined && { materialName: updates.materialName.trim() }),
-        ...(updates.category !== undefined && { category: updates.category }),
-        ...(updates.supplier !== undefined && { supplier: updates.supplier.trim() }),
-        quantity: newQty,
-        qty: newQty,
-        ...(updates.unit !== undefined && { unit: updates.unit.trim() || 'pcs' }),
-        unitPrice: newUnitPrice,
-        totalAmount: newTotal,
-        ...(updates.entryDate !== undefined && { entryDate: updates.entryDate }),
-        ...(updates.notes !== undefined && { notes: updates.notes.trim() || undefined }),
-        updatedAt: nowIso,
-      };
-      inMemoryRawMaterialEntries[index] = updated;
-      return updated;
-    }
-  },
-
-  /**
-   * Deletes a recurring raw material purchase record.
-   */
-  async deleteRawMaterialEntry(id: string): Promise<boolean> {
-    if (!supabase) {
-      inMemoryRawMaterialEntries = inMemoryRawMaterialEntries.filter((e) => e.id !== id);
-      return true;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('raw_material_entries')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.warn('Supabase deleteRawMaterialEntry fallback to in-memory:', error.message || error);
-        inMemoryRawMaterialEntries = inMemoryRawMaterialEntries.filter((e) => e.id !== id);
-        return true;
-      }
-      return true;
-    } catch (err) {
-      console.warn('Unexpected error deleting raw material entry (using in-memory fallback):', err);
-      inMemoryRawMaterialEntries = inMemoryRawMaterialEntries.filter((e) => e.id !== id);
-      return true;
-    }
-  },
-};
-

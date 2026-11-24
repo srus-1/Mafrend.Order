@@ -1,9 +1,33 @@
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
 import { HPPBreakdown } from '@/types/order';
 
-export function cn(...inputs: ClassValue[]): string {
-  return twMerge(clsx(inputs));
+export const INDONESIAN_MONTHS = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+] as const;
+
+/**
+ * Formats a YYYY-MM month key into Indonesian full month label.
+ * Example: "2026-11" -> "November 2026", "ALL" -> "Semua Bulan"
+ */
+export function formatMonthLabel(monthKey: string): string {
+  if (!monthKey || monthKey === 'ALL') return 'Semua Bulan';
+  if (!monthKey.includes('-')) return monthKey;
+  const [yearStr, monthStr] = monthKey.split('-');
+  const monthIdx = parseInt(monthStr, 10) - 1;
+  if (monthIdx >= 0 && monthIdx < 12) {
+    return `${INDONESIAN_MONTHS[monthIdx]} ${yearStr}`;
+  }
+  return monthKey;
 }
 
 /**
@@ -30,27 +54,33 @@ export function formatRp(amount: number): string {
  */
 export function formatDateShort(dateStr: string): string {
   if (!dateStr) return '-';
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mei',
+    'Jun',
+    'Jul',
+    'Agu',
+    'Sep',
+    'Okt',
+    'Nov',
+    'Des',
+  ];
   try {
+    const isoMatch = dateStr.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const year = Number(isoMatch[1]);
+      const monthIdx = Number(isoMatch[2]) - 1;
+      const day = Number(isoMatch[3]);
+      if (monthIdx >= 0 && monthIdx < 12 && day >= 1 && day <= 31) {
+        return `${day} ${months[monthIdx]} ${year}`;
+      }
+    }
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des',
-    ];
-    const day = d.getDate();
-    const month = months[d.getMonth()];
-    const year = d.getFullYear();
-    return `${day} ${month} ${year}`;
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   } catch {
     return dateStr;
   }
