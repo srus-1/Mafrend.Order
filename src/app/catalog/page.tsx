@@ -12,6 +12,25 @@ import ActionMenuDropdown from '@/components/shared/ActionMenuDropdown';
 import CustomSelect from '@/components/shared/CustomSelect';
 import { Plus, Search, X, Inbox, Check } from 'lucide-react';
 
+const CATEGORY_BADGE_STYLES: Record<string, string> = {
+  Akrilik: 'bg-[#8EA6FF] text-[#14161D]',
+  Apparel: 'bg-[#F29B76] text-[#14161D]',
+  Lanyard: 'bg-[#6EEB9A] text-[#14161D]',
+  'Stiker UV': 'bg-[#F9DC7E] text-[#14161D]',
+};
+
+function getCategoryBadgeStyle(category: string): string {
+  return (
+    CATEGORY_BADGE_STYLES[category] ?? 'bg-[var(--bg-chip-on-row)] text-[var(--ink-primary)]'
+  );
+}
+
+function getMarginBadgeStyle(marginPct: number): string {
+  if (marginPct >= 25) return 'bg-[#6EEB9A] text-[#14161D]';
+  if (marginPct >= 0) return 'bg-[#F9DC7E] text-[#14161D]';
+  return 'bg-[#F29B76] text-[#14161D]';
+}
+
 export default function CatalogPage() {
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -107,14 +126,6 @@ export default function CatalogPage() {
     setItems((prev) => prev.filter((c) => c.id !== item.id));
     await catalogService.deleteCatalogItem(item.id);
     showToast('Item katalog dihapus');
-  };
-
-  const categoryBadgeStyle = (cat: string) => {
-    if (cat === 'Akrilik') return 'bg-[#8EA6FF] text-[#14161D]';
-    if (cat === 'Apparel') return 'bg-[#F29B76] text-[#14161D]';
-    if (cat === 'Lanyard') return 'bg-[#6EEB9A] text-[#14161D]';
-    if (cat === 'Stiker UV') return 'bg-[#F9DC7E] text-[#14161D]';
-    return 'bg-[var(--bg-chip-on-row)] text-[var(--ink-primary)]';
   };
 
   return (
@@ -272,6 +283,21 @@ export default function CatalogPage() {
               item.defaultPricePerPcs,
               item.totalHppPerPcs
             );
+            const marginBadgeClass = getMarginBadgeStyle(marginPct);
+            const actionItems = [
+              {
+                label: 'Edit',
+                onClick: () => {
+                  setEditingItem(item);
+                  setIsModalOpen(true);
+                },
+              },
+              {
+                label: 'Hapus',
+                tone: 'danger' as const,
+                onClick: () => void handleDelete(item),
+              },
+            ];
 
             return (
               <div
@@ -285,7 +311,7 @@ export default function CatalogPage() {
                         {item.productName}
                       </span>
                       <span
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0 ${categoryBadgeStyle(
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0 ${getCategoryBadgeStyle(
                           item.category
                         )}`}
                       >
@@ -300,20 +326,7 @@ export default function CatalogPage() {
                   <div className="lg:hidden shrink-0">
                     <ActionMenuDropdown
                       ariaLabel={`Menu aksi ${item.productName}`}
-                      items={[
-                        {
-                          label: 'Edit',
-                          onClick: () => {
-                            setEditingItem(item);
-                            setIsModalOpen(true);
-                          },
-                        },
-                        {
-                          label: 'Hapus',
-                          tone: 'danger',
-                          onClick: () => void handleDelete(item),
-                        },
-                      ]}
+                      items={actionItems}
                     />
                   </div>
                 </div>
@@ -335,13 +348,7 @@ export default function CatalogPage() {
                     <div className="text-[10px] font-semibold text-[var(--ink-muted)]">Margin</div>
                     <span
                       title={`Laba ${formatRp(profit)}/pcs`}
-                      className={`inline-block mt-0.5 px-2 py-0.5 rounded-md text-[11px] font-bold tabular-nums ${
-                        marginPct >= 25
-                          ? 'bg-[#6EEB9A] text-[#14161D]'
-                          : marginPct >= 0
-                          ? 'bg-[#F9DC7E] text-[#14161D]'
-                          : 'bg-[#F29B76] text-[#14161D]'
-                      }`}
+                      className={`inline-block mt-0.5 px-2 py-0.5 rounded-md text-[11px] font-bold tabular-nums ${marginBadgeClass}`}
                     >
                       {marginPct}%
                     </span>
@@ -388,13 +395,7 @@ export default function CatalogPage() {
 
                     <span
                       title={`Laba ${formatRp(profit)}/pcs`}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-bold tabular-nums ${
-                        marginPct >= 25
-                          ? 'bg-[#6EEB9A] text-[#14161D]'
-                          : marginPct >= 0
-                          ? 'bg-[#F9DC7E] text-[#14161D]'
-                          : 'bg-[#F29B76] text-[#14161D]'
-                      }`}
+                      className={`px-2 py-1 rounded-lg text-[11px] font-bold tabular-nums ${marginBadgeClass}`}
                     >
                       {marginPct}%
                     </span>
@@ -402,20 +403,7 @@ export default function CatalogPage() {
 
                   <ActionMenuDropdown
                     ariaLabel={`Menu aksi ${item.productName}`}
-                    items={[
-                      {
-                        label: 'Edit',
-                        onClick: () => {
-                          setEditingItem(item);
-                          setIsModalOpen(true);
-                        },
-                      },
-                      {
-                        label: 'Hapus',
-                        tone: 'danger',
-                        onClick: () => void handleDelete(item),
-                      },
-                    ]}
+                    items={actionItems}
                   />
                 </div>
               </div>
@@ -600,80 +588,28 @@ function CatalogFormModal({ item, onClose, onSave }: CatalogFormModalProps) {
             </span>
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-              <div>
-                <label className="block text-[11px] font-semibold text-[var(--ink-muted)] mb-1">
-                  Bahan
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={hppBahanBaku > 0 ? String(hppBahanBaku) : ''}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => handleNumeric(e, setHppBahanBaku)}
-                  className="w-full px-2.5 py-2 rounded-xl bg-[var(--bg-chip-on-row)] text-xs font-semibold tabular-nums text-[var(--ink-primary)]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-[var(--ink-muted)] mb-1">
-                  Tinta
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={hppTintaSablon > 0 ? String(hppTintaSablon) : ''}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => handleNumeric(e, setHppTintaSablon)}
-                  className="w-full px-2.5 py-2 rounded-xl bg-[var(--bg-chip-on-row)] text-xs font-semibold tabular-nums text-[var(--ink-primary)]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-[var(--ink-muted)] mb-1">
-                  Kerja
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={hppTenagaKerja > 0 ? String(hppTenagaKerja) : ''}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => handleNumeric(e, setHppTenagaKerja)}
-                  className="w-full px-2.5 py-2 rounded-xl bg-[var(--bg-chip-on-row)] text-xs font-semibold tabular-nums text-[var(--ink-primary)]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-[var(--ink-muted)] mb-1">
-                  Kemas
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={hppKemasan > 0 ? String(hppKemasan) : ''}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => handleNumeric(e, setHppKemasan)}
-                  className="w-full px-2.5 py-2 rounded-xl bg-[var(--bg-chip-on-row)] text-xs font-semibold tabular-nums text-[var(--ink-primary)]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-[var(--ink-muted)] mb-1">
-                  Overhead
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={hppOverhead > 0 ? String(hppOverhead) : ''}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => handleNumeric(e, setHppOverhead)}
-                  className="w-full px-2.5 py-2 rounded-xl bg-[var(--bg-chip-on-row)] text-xs font-semibold tabular-nums text-[var(--ink-primary)]"
-                />
-              </div>
+              {[
+                { label: 'Bahan', value: hppBahanBaku, setter: setHppBahanBaku },
+                { label: 'Tinta', value: hppTintaSablon, setter: setHppTintaSablon },
+                { label: 'Kerja', value: hppTenagaKerja, setter: setHppTenagaKerja },
+                { label: 'Kemas', value: hppKemasan, setter: setHppKemasan },
+                { label: 'Overhead', value: hppOverhead, setter: setHppOverhead },
+              ].map((field) => (
+                <div key={field.label}>
+                  <label className="block text-[11px] font-semibold text-[var(--ink-muted)] mb-1">
+                    {field.label}
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={field.value > 0 ? String(field.value) : ''}
+                    onFocus={selectOnFocus}
+                    onChange={(e) => handleNumeric(e, field.setter)}
+                    className="w-full px-2.5 py-2 rounded-xl bg-[var(--bg-chip-on-row)] text-xs font-semibold tabular-nums text-[var(--ink-primary)]"
+                  />
+                </div>
+              ))}
             </div>
 
             <div className="p-3 rounded-xl bg-[var(--bg-chip-on-row)] grid grid-cols-3 gap-2 text-center">

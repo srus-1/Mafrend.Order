@@ -2,7 +2,14 @@
 
 import React, { useState, useMemo } from 'react';
 import { useOrders, getOrderMonth } from '@/context/OrderContext';
-import { formatRp, formatDateShort, formatMonthLabel } from '@/lib/utils';
+import { PaymentStatus } from '@/types/order';
+import {
+  formatRp,
+  formatDateShort,
+  formatMonthLabel,
+  calculateMargin,
+  buildWhatsAppUrl,
+} from '@/lib/utils';
 import {
   exportOrdersToCSV,
   downloadCSVFile,
@@ -19,6 +26,12 @@ import {
   Inbox,
   X,
 } from 'lucide-react';
+
+const PAYMENT_BADGE_CONFIG: Record<PaymentStatus, { label: string; className: string }> = {
+  LUNAS: { label: 'Lunas', className: 'bg-[#6EEB9A] text-[#14161D]' },
+  DP: { label: 'DP', className: 'bg-[#8EA6FF] text-[#14161D]' },
+  BELUM_LUNAS: { label: 'Belum lunas', className: 'bg-[#F29B76] text-[#14161D]' },
+};
 
 export default function HistoryPage() {
   const {
@@ -70,17 +83,31 @@ export default function HistoryPage() {
     });
   }, [completedOrders, searchTerm, selectedMonth]);
 
-  const totalCompletedPcs = filteredHistory.reduce((sum, o) => sum + o.qty, 0);
-  const totalCompletedOmzet = filteredHistory.reduce((sum, o) => sum + o.omzet, 0);
-  const totalCompletedProfit = filteredHistory.reduce((sum, o) => sum + o.profit, 0);
-  const totalCompletedHpp = filteredHistory.reduce(
-    (sum, o) => sum + o.hppBreakdown.totalHpp,
-    0
-  );
-  const avgMargin =
-    totalCompletedOmzet > 0
-      ? Math.round(((totalCompletedProfit / totalCompletedOmzet) * 100) * 10) / 10
-      : 0;
+  const {
+    totalCompletedPcs,
+    totalCompletedOmzet,
+    totalCompletedProfit,
+    totalCompletedHpp,
+    avgMargin,
+  } = useMemo(() => {
+    let pcs = 0;
+    let omzet = 0;
+    let profit = 0;
+    let hpp = 0;
+    for (const order of filteredHistory) {
+      pcs += order.qty;
+      omzet += order.omzet;
+      profit += order.profit;
+      hpp += order.hppBreakdown.totalHpp;
+    }
+    return {
+      totalCompletedPcs: pcs,
+      totalCompletedOmzet: omzet,
+      totalCompletedProfit: profit,
+      totalCompletedHpp: hpp,
+      avgMargin: calculateMargin(omzet, hpp).marginPct,
+    };
+  }, [filteredHistory]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -248,12 +275,26 @@ export default function HistoryPage() {
             </div>
 
             {filteredHistory.map((order) => {
-              const cleanPhone = order.buyerPhone.replace(/\D/g, '');
-              const waNumber = cleanPhone.startsWith('0')
-                ? `62${cleanPhone.slice(1)}`
-                : cleanPhone;
-              const waUrl = `https://wa.me/${waNumber}`;
+              const waUrl = buildWhatsAppUrl(order.buyerPhone);
               const filesCount = order.designFiles?.length || 0;
+              const paymentBadge =
+                PAYMENT_BADGE_CONFIG[order.paymentStatus] || PAYMENT_BADGE_CONFIG.BELUM_LUNAS;
+              const actionItems = [
+                { label: 'Edit', onClick: () => openEditModal(order) },
+                {
+                  label: `Lihat berkas (${filesCount})`,
+                  onClick: () => setActiveDrawerOrder(order),
+                },
+                {
+                  label: 'Hapus',
+                  tone: 'danger' as const,
+                  onClick: () => {
+                    if (confirm(`Hapus arsip pesanan ${order.orderNumber}?`)) {
+                      deleteOrder(order.id);
+                    }
+                  },
+                },
+              ];
 
               return (
                 <div
@@ -288,22 +329,7 @@ export default function HistoryPage() {
                     <div className="lg:hidden shrink-0">
                       <ActionMenuDropdown
                         ariaLabel={`Menu aksi arsip ${order.orderNumber}`}
-                        items={[
-                          { label: 'Edit', onClick: () => openEditModal(order) },
-                          {
-                            label: `Lihat berkas (${filesCount})`,
-                            onClick: () => setActiveDrawerOrder(order),
-                          },
-                          {
-                            label: 'Hapus',
-                            tone: 'danger',
-                            onClick: () => {
-                              if (confirm(`Hapus arsip pesanan ${order.orderNumber}?`)) {
-                                deleteOrder(order.id);
-                              }
-                            },
-                          },
-                        ]}
+                        items={actionItems}
                       />
                     </div>
                   </div>
@@ -349,40 +375,15 @@ export default function HistoryPage() {
                     </span>
 
                     <span
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap ${
-                        order.paymentStatus === 'LUNAS'
-                          ? 'bg-[#6EEB9A] text-[#14161D]'
-                          : order.paymentStatus === 'DP'
-                          ? 'bg-[#8EA6FF] text-[#14161D]'
-                          : 'bg-[#F29B76] text-[#14161D]'
-                      }`}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap ${paymentBadge.className}`}
                     >
-                      {order.paymentStatus === 'LUNAS'
-                        ? 'Lunas'
-                        : order.paymentStatus === 'DP'
-                        ? 'DP'
-                        : 'Belum lunas'}
+                      {paymentBadge.label}
                     </span>
 
                     <div className="hidden lg:block shrink-0">
                       <ActionMenuDropdown
                         ariaLabel={`Menu aksi arsip ${order.orderNumber}`}
-                        items={[
-                          { label: 'Edit', onClick: () => openEditModal(order) },
-                          {
-                            label: `Lihat berkas (${filesCount})`,
-                            onClick: () => setActiveDrawerOrder(order),
-                          },
-                          {
-                            label: 'Hapus',
-                            tone: 'danger',
-                            onClick: () => {
-                              if (confirm(`Hapus arsip pesanan ${order.orderNumber}?`)) {
-                                deleteOrder(order.id);
-                              }
-                            },
-                          },
-                        ]}
+                        items={actionItems}
                       />
                     </div>
                   </div>

@@ -2,11 +2,24 @@
 
 import React, { useState } from 'react';
 import { BuyerSummary } from '@/types/order';
-import { formatRp } from '@/lib/utils';
+import { formatRp, buildWhatsAppUrl } from '@/lib/utils';
 import { MessageCircle, Search, X } from 'lucide-react';
 
 interface BuyerProfitTableProps {
   buyers: BuyerSummary[];
+}
+
+function getRankBadgeClass(rank?: number): string {
+  if (rank === 1) return 'bg-[#F9DC7E] text-[#14161D]';
+  if (rank === 2) return 'bg-[#8EA6FF] text-[#14161D]';
+  if (rank === 3) return 'bg-[#F29B76] text-[#14161D]';
+  return 'bg-[var(--bg-chip-on-row)] text-[var(--ink-secondary)]';
+}
+
+function getMarginBadgeClass(marginPct: number): string {
+  if (marginPct >= 30) return 'bg-[#6EEB9A] text-[#14161D]';
+  if (marginPct >= 15) return 'bg-[#8EA6FF] text-[#14161D]';
+  return 'bg-[#F29B76] text-[#14161D]';
 }
 
 export default function BuyerProfitTable({ buyers }: BuyerProfitTableProps) {
@@ -17,13 +30,6 @@ export default function BuyerProfitTable({ buyers }: BuyerProfitTableProps) {
       b.buyerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       b.buyerPhone.includes(searchTerm)
   );
-
-  const getRankBadgeClass = (rank?: number) => {
-    if (rank === 1) return 'bg-[#F9DC7E] text-[#14161D]';
-    if (rank === 2) return 'bg-[#8EA6FF] text-[#14161D]';
-    if (rank === 3) return 'bg-[#F29B76] text-[#14161D]';
-    return 'bg-[var(--bg-chip-on-row)] text-[var(--ink-secondary)]';
-  };
 
   return (
     <div className="bg-[var(--bg-surface)] shadow-[var(--shadow-card)] rounded-2xl p-4 sm:p-5 flex flex-col gap-3.5">
@@ -70,13 +76,11 @@ export default function BuyerProfitTable({ buyers }: BuyerProfitTableProps) {
           </div>
 
           {filteredBuyers.map((buyer) => {
-            const cleanPhone = buyer.buyerPhone.replace(/\D/g, '');
-            const waNumber = cleanPhone.startsWith('0')
-              ? `62${cleanPhone.slice(1)}`
-              : cleanPhone;
-            const waUrl = `https://wa.me/${waNumber}?text=Halo%20${encodeURIComponent(
-              buyer.buyerName
-            )},%20terima%20kasih%20telah%20memesan%20di%20Mafrend.Studio`;
+            const waUrl = buildWhatsAppUrl(
+              buyer.buyerPhone,
+              `Halo ${buyer.buyerName}, terima kasih telah memesan di Mafrend.Studio`
+            );
+            const marginBadgeClass = getMarginBadgeClass(buyer.marginPct);
 
             return (
               <div
@@ -110,13 +114,7 @@ export default function BuyerProfitTable({ buyers }: BuyerProfitTableProps) {
                   </div>
 
                   <span
-                    className={`lg:hidden px-2 py-0.5 rounded-lg text-[11px] font-bold tabular-nums shrink-0 ${
-                      buyer.marginPct >= 30
-                        ? 'bg-[#6EEB9A] text-[#14161D]'
-                        : buyer.marginPct >= 15
-                        ? 'bg-[#8EA6FF] text-[#14161D]'
-                        : 'bg-[#F29B76] text-[#14161D]'
-                    }`}
+                    className={`lg:hidden px-2 py-0.5 rounded-lg text-[11px] font-bold tabular-nums shrink-0 ${marginBadgeClass}`}
                   >
                     {buyer.marginPct}%
                   </span>
@@ -158,13 +156,7 @@ export default function BuyerProfitTable({ buyers }: BuyerProfitTableProps) {
                     </div>
 
                     <span
-                      className={`hidden lg:inline-flex px-2 py-1 rounded-lg text-[11px] font-bold tabular-nums shrink-0 ${
-                        buyer.marginPct >= 30
-                          ? 'bg-[#6EEB9A] text-[#14161D]'
-                          : buyer.marginPct >= 15
-                          ? 'bg-[#8EA6FF] text-[#14161D]'
-                          : 'bg-[#F29B76] text-[#14161D]'
-                      }`}
+                      className={`hidden lg:inline-flex px-2 py-1 rounded-lg text-[11px] font-bold tabular-nums shrink-0 ${marginBadgeClass}`}
                     >
                       {buyer.marginPct}%
                     </span>

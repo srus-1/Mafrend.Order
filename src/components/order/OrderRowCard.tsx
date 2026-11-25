@@ -8,7 +8,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { Order, PaymentStatus, ProcessStatus } from '@/types/order';
-import { formatRp, formatDateShort } from '@/lib/utils';
+import { formatRp, formatDateShort, buildWhatsAppUrl } from '@/lib/utils';
 import { useOrders } from '@/context/OrderContext';
 import ActionMenuDropdown from '@/components/shared/ActionMenuDropdown';
 import CustomSelect, { CustomSelectOption } from '@/components/shared/CustomSelect';
@@ -27,6 +27,22 @@ const PROCESS_OPTIONS: CustomSelectOption[] = [
   { value: 'SIAP_KIRIM', label: 'Siap Kirim 5/6', badgeClass: 'bg-[#F29B76]' },
   { value: 'SELESAI', label: 'Selesai 6/6', badgeClass: 'bg-[#6EEB9A]' },
 ];
+
+// Vivid Reference Palette Pills (WCAG AA >= 7.79:1 with #14161D ink)
+const PAYMENT_BADGE_STYLES: Record<PaymentStatus, string> = {
+  LUNAS: 'bg-[#6EEB9A] text-[#14161D]',
+  DP: 'bg-[#8EA6FF] text-[#14161D]',
+  BELUM_LUNAS: 'bg-[#F29B76] text-[#14161D]',
+};
+
+const PROCESS_BADGE_STYLES: Record<ProcessStatus, string> = {
+  ANTREAN: 'bg-[#8EA6FF] text-[#14161D]',
+  SETTING_DESAIN: 'bg-[#8EA6FF] text-[#14161D]',
+  PROSES_CETAK: 'bg-[#8EA6FF] text-[#14161D]',
+  FINISHING: 'bg-[#F9DC7E] text-[#14161D]',
+  SIAP_KIRIM: 'bg-[#F29B76] text-[#14161D]',
+  SELESAI: 'bg-[#6EEB9A] text-[#14161D]',
+};
 
 interface OrderRowCardProps {
   order: Order;
@@ -100,31 +116,31 @@ function OrderRowCardComponent({
     updateOrder(order.id, { processStatus: nextValue as ProcessStatus });
   };
 
-  const cleanPhone = order.buyerPhone.replace(/\D/g, '');
-  const waNumber = cleanPhone.startsWith('0') ? `62${cleanPhone.slice(1)}` : cleanPhone;
-  const waUrl = `https://wa.me/${waNumber}?text=Halo%20${encodeURIComponent(
-    order.buyerName
-  )},%20update%20pesanan%20${encodeURIComponent(order.orderNumber)}%20di%20Mafrend.Studio`;
+  const waUrl = buildWhatsAppUrl(
+    order.buyerPhone,
+    `Halo ${order.buyerName}, update pesanan ${order.orderNumber} di Mafrend.Studio`
+  );
 
   const totalFilesCount = (order.designFiles || []).length;
   const readyFilesCount = (order.designFiles || []).filter((f) => f.isReadyToPrint).length;
   const isNegativeMargin = order.marginPct < 0;
 
-  // Vivid Reference Palette Pills (WCAG AA >= 7.79:1 with #14161D ink)
-  const paymentBadgeStyles: Record<PaymentStatus, string> = {
-    LUNAS: 'bg-[#6EEB9A] text-[#14161D]',
-    DP: 'bg-[#8EA6FF] text-[#14161D]',
-    BELUM_LUNAS: 'bg-[#F29B76] text-[#14161D]',
-  };
-
-  const processBadgeStyles: Record<ProcessStatus, string> = {
-    ANTREAN: 'bg-[#8EA6FF] text-[#14161D]',
-    SETTING_DESAIN: 'bg-[#8EA6FF] text-[#14161D]',
-    PROSES_CETAK: 'bg-[#8EA6FF] text-[#14161D]',
-    FINISHING: 'bg-[#F9DC7E] text-[#14161D]',
-    SIAP_KIRIM: 'bg-[#F29B76] text-[#14161D]',
-    SELESAI: 'bg-[#6EEB9A] text-[#14161D]',
-  };
+  const actionMenuItems = [
+    { label: 'Edit', onClick: () => openEditModal(order) },
+    {
+      label: `Lihat berkas (${totalFilesCount})`,
+      onClick: () => setActiveDrawerOrder(order),
+    },
+    {
+      label: 'Hapus',
+      tone: 'danger' as const,
+      onClick: () => {
+        if (confirm(`Hapus pesanan ${order.orderNumber}?`)) {
+          deleteOrder(order.id);
+        }
+      },
+    },
+  ];
 
   const hasSpecs = Boolean(order.specs && order.specs.trim());
   const hasNotes = Boolean(order.notes && order.notes.trim());
@@ -199,22 +215,7 @@ function OrderRowCardComponent({
           <div className="lg:hidden shrink-0">
             <ActionMenuDropdown
               ariaLabel={`Menu aksi ${order.orderNumber}`}
-              items={[
-                { label: 'Edit', onClick: () => openEditModal(order) },
-                {
-                  label: `Lihat berkas (${totalFilesCount})`,
-                  onClick: () => setActiveDrawerOrder(order),
-                },
-                {
-                  label: 'Hapus',
-                  tone: 'danger',
-                  onClick: () => {
-                    if (confirm(`Hapus pesanan ${order.orderNumber}?`)) {
-                      deleteOrder(order.id);
-                    }
-                  },
-                },
-              ]}
+              items={actionMenuItems}
             />
           </div>
         </div>
@@ -289,7 +290,7 @@ function OrderRowCardComponent({
               onChange={handlePaymentChange}
               options={PAYMENT_OPTIONS}
               triggerClassName={
-                paymentBadgeStyles[order.paymentStatus] || paymentBadgeStyles.BELUM_LUNAS
+                PAYMENT_BADGE_STYLES[order.paymentStatus] || PAYMENT_BADGE_STYLES.BELUM_LUNAS
               }
             />
 
@@ -301,7 +302,7 @@ function OrderRowCardComponent({
               onChange={handleProcessChange}
               options={PROCESS_OPTIONS}
               triggerClassName={
-                processBadgeStyles[order.processStatus] || processBadgeStyles.ANTREAN
+                PROCESS_BADGE_STYLES[order.processStatus] || PROCESS_BADGE_STYLES.ANTREAN
               }
             />
           </div>
@@ -313,22 +314,7 @@ function OrderRowCardComponent({
           <div className="hidden lg:block shrink-0">
             <ActionMenuDropdown
               ariaLabel={`Menu aksi ${order.orderNumber}`}
-              items={[
-                { label: 'Edit', onClick: () => openEditModal(order) },
-                {
-                  label: `Lihat berkas (${totalFilesCount})`,
-                  onClick: () => setActiveDrawerOrder(order),
-                },
-                {
-                  label: 'Hapus',
-                  tone: 'danger',
-                  onClick: () => {
-                    if (confirm(`Hapus pesanan ${order.orderNumber}?`)) {
-                      deleteOrder(order.id);
-                    }
-                  },
-                },
-              ]}
+              items={actionMenuItems}
             />
           </div>
         </div>

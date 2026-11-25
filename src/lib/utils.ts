@@ -132,3 +132,15 @@ export function calculateMargin(
     marginPct,
   };
 }
+
+/**
+ * Builds a normalized Indonesian WhatsApp deep link (62... format).
+ */
+export function buildWhatsAppUrl(phone: string, message?: string): string {
+  const digits = phone.replace(/\D/g, '');
+  const waNumber = digits.startsWith('0') ? `62${digits.slice(1)}` : digits;
+  if (!message) {
+    return `https://wa.me/${waNumber}`;
+  }
+  return `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`;
+}
