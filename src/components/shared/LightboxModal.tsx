@@ -56,9 +56,9 @@ function LightboxContent({ file, onClose }: LightboxContentProps) {
           <span className="px-2.5 py-1 rounded-lg text-xs font-bold uppercase bg-[#4638F5] text-white shrink-0">
             {file.fileType}
           </span>
-          <h1 className="text-sm font-bold text-white truncate max-w-[200px] sm:max-w-md">
+          <h2 className="text-sm font-bold text-white truncate max-w-[200px] sm:max-w-md">
             {file.fileName}
-          </h1>
+          </h2>
           <span
             className={`hidden sm:inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold ${
               file.isReadyToPrint

@@ -108,9 +108,9 @@ export default function RawMaterialFormModal({
       <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
       <div className="relative bg-[var(--bg-surface)] text-[var(--ink-primary)] rounded-t-2xl sm:rounded-2xl max-w-md w-full shadow-2xl overflow-hidden z-10">
         <div className="px-5 py-4 flex items-center justify-between">
-          <h1 id="material-modal-title" className="font-bold text-base text-[var(--ink-primary)]">
+          <h2 id="material-modal-title" className="font-bold text-base text-[var(--ink-primary)]">
             {entry ? 'Edit Bahan Baku' : 'Tambah Bahan Baku'}
-          </h1>
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -123,7 +123,7 @@ export default function RawMaterialFormModal({
 
         <form onSubmit={handleSubmit} className="px-5 pb-5 flex flex-col gap-3.5">
           {formError && (
-            <div className="p-3 rounded-xl bg-[#F29B76] text-[#14161D] text-xs font-semibold">
+            <div role="alert" className="p-3 rounded-xl bg-[#F29B76] text-[#14161D] text-xs font-semibold">
               {formError}
             </div>
           )}

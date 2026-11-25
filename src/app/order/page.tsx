@@ -265,8 +265,19 @@ export default function OrderPage() {
         )}
 
         {loading ? (
-          <div className="py-12 text-center text-xs font-medium text-[var(--ink-muted)]">
-            Memuat antrean...
+          <div
+            role="status"
+            aria-busy="true"
+            aria-label="Memuat antrean pesanan"
+            className="flex flex-col gap-2.5"
+          >
+            <span className="sr-only">Memuat antrean...</span>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-16 rounded-xl bg-[var(--bg-row)] animate-pulse"
+              />
+            ))}
           </div>
         ) : (
           <OrderSortableList orders={sortedOrders} />

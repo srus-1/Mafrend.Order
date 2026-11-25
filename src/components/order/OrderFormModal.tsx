@@ -216,9 +216,9 @@ function OrderFormContent({
       <div className="relative w-full sm:max-w-3xl bg-[var(--bg-surface)] text-[var(--ink-primary)] rounded-t-2xl sm:rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.3)] flex flex-col max-h-[92vh] sm:max-h-[90vh] overflow-hidden animate-fade-in-up z-10">
         {/* Clean Header (Zero Sub-Headline, Zero Border) */}
         <div className="px-5 py-4 sm:px-6 flex items-center justify-between shrink-0">
-          <h1 id="order-modal-title" className="text-base sm:text-lg font-bold text-[var(--ink-primary)]">
+          <h2 id="order-modal-title" className="text-base sm:text-lg font-bold text-[var(--ink-primary)]">
             {editingOrder ? `Edit Pesanan #${editingOrder.orderNumber}` : 'Input Pesanan'}
-          </h1>
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -236,7 +236,7 @@ function OrderFormContent({
           className="flex-1 overflow-y-auto overscroll-contain px-5 pb-5 sm:px-6 flex flex-col gap-5"
         >
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-[#F29B76] text-[#14161D] text-xs font-semibold flex items-center gap-2">
+            <div role="alert" className="p-3 rounded-xl bg-[#F29B76] text-[#14161D] text-xs font-semibold flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>

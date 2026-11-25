@@ -254,8 +254,19 @@ export default function CatalogPage() {
       {/* Separated Catalog Item Rows */}
       <div className="bg-[var(--bg-surface)] shadow-[var(--shadow-card)] rounded-2xl p-3.5 sm:p-4 flex flex-col gap-2.5">
         {loading ? (
-          <div className="py-12 text-center text-xs font-medium text-[var(--ink-muted)]">
-            Memuat katalog item...
+          <div
+            role="status"
+            aria-busy="true"
+            aria-label="Memuat katalog item"
+            className="flex flex-col gap-2.5"
+          >
+            <span className="sr-only">Memuat katalog item...</span>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-20 rounded-xl bg-[var(--bg-row)] animate-pulse"
+              />
+            ))}
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="py-14 px-6 bg-[var(--bg-row)] rounded-2xl flex flex-col items-center justify-center text-center">
@@ -502,9 +513,9 @@ function CatalogFormModal({ item, onClose, onSave }: CatalogFormModalProps) {
 
       <div className="relative w-full sm:max-w-xl bg-[var(--bg-surface)] text-[var(--ink-primary)] rounded-t-2xl sm:rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.3)] flex flex-col max-h-[92vh] overflow-hidden animate-fade-in-up z-10">
         <div className="px-5 py-4 flex items-center justify-between">
-          <h1 id="catalog-modal-title" className="text-base font-bold text-[var(--ink-primary)]">
+          <h2 id="catalog-modal-title" className="text-base font-bold text-[var(--ink-primary)]">
             {item ? 'Edit Item Katalog' : 'Tambah Item Katalog'}
-          </h1>
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -517,7 +528,7 @@ function CatalogFormModal({ item, onClose, onSave }: CatalogFormModalProps) {
 
         <form onSubmit={handleSubmit} className="px-5 pb-5 overflow-y-auto flex flex-col gap-4">
           {error && (
-            <div className="p-3 rounded-xl bg-[#F29B76] text-[#14161D] text-xs font-semibold">
+            <div role="alert" className="p-3 rounded-xl bg-[#F29B76] text-[#14161D] text-xs font-semibold">
               {error}
             </div>
           )}

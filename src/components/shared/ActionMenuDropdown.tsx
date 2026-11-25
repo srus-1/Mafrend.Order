@@ -26,6 +26,8 @@ export default function ActionMenuDropdown({
 }: ActionMenuDropdownProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const pathname = usePathname();
   const [prevPathname, setPrevPathname] = useState(pathname);
 
@@ -37,6 +39,8 @@ export default function ActionMenuDropdown({
   useEffect(() => {
     if (!open) return;
 
+    itemRefs.current[0]?.focus();
+
     const handleOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
@@ -46,6 +50,7 @@ export default function ActionMenuDropdown({
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpen(false);
+        triggerRef.current?.focus();
       }
     };
 
@@ -57,6 +62,26 @@ export default function ActionMenuDropdown({
     };
   }, [open]);
 
+  const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (items.length === 0) return;
+    const currentIndex = itemRefs.current.findIndex((el) => el === document.activeElement);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const next = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+      itemRefs.current[next]?.focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prev = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+      itemRefs.current[prev]?.focus();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      itemRefs.current[0]?.focus();
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      itemRefs.current[items.length - 1]?.focus();
+    }
+  };
+
   const triggerClass =
     triggerSurface === 'on-row'
       ? 'bg-[var(--bg-chip-on-row)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)]'
@@ -65,6 +90,7 @@ export default function ActionMenuDropdown({
   return (
     <div ref={containerRef} className="relative inline-flex">
       <button
+        ref={triggerRef}
         type="button"
         onClick={(e) => {
           e.stopPropagation();
@@ -81,11 +107,15 @@ export default function ActionMenuDropdown({
       {open && (
         <div
           role="menu"
+          onKeyDown={handleMenuKeyDown}
           className="absolute right-0 top-full mt-1.5 min-w-[148px] rounded-xl bg-[var(--bg-surface-elevated)] p-1.5 shadow-[0_14px_34px_rgba(0,0,0,0.18)] z-40 flex flex-col gap-0.5 text-left"
         >
-          {items.map((item) => (
+          {items.map((item, idx) => (
             <button
               key={item.label}
+              ref={(el) => {
+                itemRefs.current[idx] = el;
+              }}
               type="button"
               role="menuitem"
               onClick={(e) => {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Lock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -10,9 +10,11 @@ export default function StaffAuthModal() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isAuthModalOpen) return;
+    emailInputRef.current?.focus();
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeAuthModal();
     };
@@ -57,9 +59,9 @@ export default function StaffAuthModal() {
             <span className="w-8 h-8 rounded-xl bg-[#4638F5] text-[#FFFFFF] flex items-center justify-center">
               <Lock className="w-4 h-4" />
             </span>
-            <h1 id="staff-auth-modal-title" className="font-bold text-base text-[var(--ink-primary)]">
+            <h2 id="staff-auth-modal-title" className="font-bold text-base text-[var(--ink-primary)]">
               Masuk Staf Workshop
-            </h1>
+            </h2>
           </div>
           <button
             type="button"
@@ -73,7 +75,7 @@ export default function StaffAuthModal() {
 
         <form onSubmit={handleSubmit} className="px-5 pb-5 flex flex-col gap-3.5">
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-[#F29B76] text-[#14161D] text-xs font-semibold">
+            <div role="alert" className="p-3 rounded-xl bg-[#F29B76] text-[#14161D] text-xs font-semibold">
               {errorMsg}
             </div>
           )}
@@ -86,6 +88,7 @@ export default function StaffAuthModal() {
               Email Staf
             </label>
             <input
+              ref={emailInputRef}
               id="staff-auth-email"
               type="email"
               autoComplete="email"

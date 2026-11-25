@@ -69,9 +69,9 @@ export default function OrderDesignDrawer() {
             <span className="px-2.5 py-1 rounded-lg bg-[#4638F5] text-[#FFFFFF] text-xs font-bold tabular-nums">
               #{activeDrawerOrder.orderNumber}
             </span>
-            <h1 id="design-drawer-title" className="text-base font-bold text-[var(--ink-primary)]">
+            <h2 id="design-drawer-title" className="text-base font-bold text-[var(--ink-primary)]">
               Galeri Desain
-            </h1>
+            </h2>
           </div>
 
           <button
