@@ -179,6 +179,14 @@ export function CalculatorProvider({ children }: { children: React.ReactNode }) 
     waitingForOperand,
   ]);
 
+  const clearAll = useCallback(() => {
+    setDisplay('0');
+    setExpression('');
+    setPrevValue(null);
+    setOperator(null);
+    setWaitingForOperand(false);
+  }, []);
+
   const openCalculator = useCallback(() => {
     setIsOpen(true);
     setIsMinimized(false);
@@ -186,16 +194,17 @@ export function CalculatorProvider({ children }: { children: React.ReactNode }) 
 
   const closeCalculator = useCallback(() => {
     setIsOpen(false);
-  }, []);
+    setIsMinimized(false);
+    clearAll();
+  }, [clearAll]);
 
   const toggleCalculator = useCallback(() => {
-    setIsOpen((prev) => {
-      if (!prev) {
-        setIsMinimized(false);
-      }
-      return !prev;
-    });
-  }, []);
+    if (isOpen) {
+      closeCalculator();
+    } else {
+      openCalculator();
+    }
+  }, [isOpen, closeCalculator, openCalculator]);
 
   const toggleMinimize = useCallback(() => {
     setIsMinimized((prev) => !prev);
@@ -203,14 +212,6 @@ export function CalculatorProvider({ children }: { children: React.ReactNode }) 
 
   const setPosition = useCallback((pos: CalculatorPosition) => {
     setPositionState(pos);
-  }, []);
-
-  const clearAll = useCallback(() => {
-    setDisplay('0');
-    setExpression('');
-    setPrevValue(null);
-    setOperator(null);
-    setWaitingForOperand(false);
   }, []);
 
   const inputDigit = useCallback(

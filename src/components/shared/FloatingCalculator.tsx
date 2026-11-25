@@ -282,7 +282,7 @@ export default function FloatingCalculator() {
       </div>
 
       {/* Apple Display Readout */}
-      <div className="px-5 pt-2.5 pb-2.5 text-right flex flex-col justify-end min-h-[84px]">
+      <div className="px-5 pt-2.5 pb-3.5 text-right flex flex-col justify-end min-h-[84px]">
         <div className="text-xs font-medium text-[#A5A5A5] tabular-nums min-h-[18px] truncate">
           {expression || '\u00A0'}
         </div>
@@ -293,9 +293,6 @@ export default function FloatingCalculator() {
         >
           {formattedDisplay}
         </output>
-      </div>
-      <div className="px-5 pb-2.5 text-[11px] font-medium text-[#FF9F0A]">
-        Tetap terbuka saat pindah halaman
       </div>
 
       {/* Apple 4x5 Circular Keypad */}

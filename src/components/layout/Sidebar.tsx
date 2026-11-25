@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -81,6 +81,32 @@ export default function Sidebar() {
   const { isOpen: isCalcOpen, toggleCalculator } = useCalculator();
 
   const mobileTouchStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isSnapping, setIsSnapping] = useState(false);
+  const snapTimerRef = useRef<number | null>(null);
+  const isCollapsedRef = useRef(isCollapsed);
+
+  useEffect(() => {
+    isCollapsedRef.current = isCollapsed;
+  }, [isCollapsed]);
+
+  useEffect(() => {
+    return () => {
+      if (snapTimerRef.current !== null) {
+        window.clearTimeout(snapTimerRef.current);
+      }
+    };
+  }, []);
+
+  const triggerSnapAnimation = () => {
+    setIsSnapping(true);
+    if (snapTimerRef.current !== null) {
+      window.clearTimeout(snapTimerRef.current);
+    }
+    snapTimerRef.current = window.setTimeout(() => {
+      setIsSnapping(false);
+      snapTimerRef.current = null;
+    }, 300);
+  };
 
   const handleMobileTouchStart = (e: React.TouchEvent<HTMLElement>) => {
     if (e.touches.length === 1) {
@@ -108,6 +134,10 @@ export default function Sidebar() {
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const resolved = resolveSidebarDrag(moveEvent.clientX);
+      if (resolved.isCollapsed !== isCollapsedRef.current) {
+        isCollapsedRef.current = resolved.isCollapsed;
+        triggerSnapAnimation();
+      }
       if (resolved.isCollapsed) {
         setIsCollapsed(true);
       } else {
@@ -133,11 +163,13 @@ export default function Sidebar() {
       {/* 1. DESKTOP SIDEBAR (Zero-Border Tonal Surface) */}
       <aside
         style={{ width: desktopWidth }}
-        className={`hidden md:flex flex-col justify-between shrink-0 min-h-screen bg-[var(--bg-surface)] text-[var(--ink-primary)] shadow-[var(--shadow-card)] relative z-20 select-none ${
-          isDragging ? 'transition-none' : 'transition-[width] duration-200 ease-in-out'
+        className={`hidden md:flex flex-col justify-between shrink-0 sticky top-0 h-dvh self-start bg-[var(--bg-surface)] text-[var(--ink-primary)] shadow-[var(--shadow-card)] z-20 select-none ${
+          isDragging && !isSnapping
+            ? 'transition-none will-change-[width]'
+            : 'transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width]'
         }`}
       >
-        <div>
+        <div className={isCollapsed ? 'flex-1 min-h-0' : 'flex-1 min-h-0 overflow-y-auto'}>
           {/* Brand Header (Zero Sub-Headline, Crisp Uncropped Logo) */}
           {isCollapsed ? (
             <div className="pt-5 pb-4 px-2 flex flex-col items-center gap-3">
@@ -247,7 +279,7 @@ export default function Sidebar() {
 
         {/* Bottom Utility Dock: Calculator + Single-Icon Theme Toggle (Replaces Shift Workshop Aktif) */}
         {isCollapsed ? (
-          <div className="p-2.5 pb-5 flex flex-col items-center gap-2">
+          <div className="p-2.5 pb-5 flex flex-col items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={toggleCalculator}
@@ -276,30 +308,33 @@ export default function Sidebar() {
             </button>
           </div>
         ) : (
-          <div className="p-3 pb-5 flex items-center gap-2">
+          <div className="p-3 pb-5 flex items-center gap-2 shrink-0 min-w-0 overflow-hidden">
             <button
               type="button"
               onClick={toggleCalculator}
               aria-label="Kalkulator (Alt+K)"
-              className={`flex-1 min-h-[42px] px-3 rounded-xl flex items-center justify-between text-xs font-semibold transition-colors ${
+              title="Kalkulator (Alt+K)"
+              className={`flex-1 min-w-0 min-h-[42px] px-3 rounded-xl flex items-center justify-between gap-1.5 overflow-hidden text-xs font-semibold transition-colors ${
                 isCalcOpen
                   ? 'bg-[#4638F5] text-[#FFFFFF]'
                   : 'bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)]'
               }`}
             >
-              <span className="inline-flex items-center gap-2 truncate">
+              <span className="inline-flex items-center gap-2 min-w-0">
                 <Calculator className="w-4 h-4 shrink-0" />
                 <span className="truncate">Kalkulator</span>
               </span>
-              <span
-                className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold shrink-0 ${
-                  isCalcOpen
-                    ? 'bg-white/20 text-[#FFFFFF]'
-                    : 'bg-[var(--bg-surface)] text-[var(--ink-muted)]'
-                }`}
-              >
-                Alt+K
-              </span>
+              {width >= 240 && (
+                <span
+                  className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold shrink-0 ${
+                    isCalcOpen
+                      ? 'bg-white/20 text-[#FFFFFF]'
+                      : 'bg-[var(--bg-surface)] text-[var(--ink-muted)]'
+                  }`}
+                >
+                  Alt+K
+                </span>
+              )}
             </button>
 
             <button
@@ -405,14 +440,14 @@ export default function Sidebar() {
         </div>
 
         {/* Mobile Bottom Utility Dock */}
-        <div className="p-3 pb-5 flex items-center gap-2">
+        <div className="p-3 pb-5 flex items-center gap-2 shrink-0 min-w-0">
           <button
             type="button"
             onClick={() => {
               closeMobile();
               toggleCalculator();
             }}
-            className={`flex-1 min-h-[44px] px-3.5 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold transition-colors ${
+            className={`flex-1 min-w-0 min-h-[44px] px-3.5 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold transition-colors ${
               isCalcOpen
                 ? 'bg-[#4638F5] text-[#FFFFFF]'
                 : 'bg-[var(--bg-subtle)] text-[var(--ink-primary)]'
