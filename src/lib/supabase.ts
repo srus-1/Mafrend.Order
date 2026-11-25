@@ -512,6 +512,30 @@ export const orderService = {
       throw new Error('Supabase client is not initialized.');
     }
 
+    const MAX_DESIGN_FILE_BYTES = 25 * 1024 * 1024; // 25 MB
+    const ALLOWED_DESIGN_EXTENSIONS = new Set([
+      'PNG',
+      'JPG',
+      'JPEG',
+      'WEBP',
+      'PDF',
+      'AI',
+      'CDR',
+      'EPS',
+      'PSD',
+      'ZIP',
+      'RAR',
+    ]);
+    const rawExt = file.name.split('.').pop()?.toUpperCase() || '';
+    if (!ALLOWED_DESIGN_EXTENSIONS.has(rawExt)) {
+      throw new Error(
+        `Format file .${rawExt || '?'} tidak diizinkan. Gunakan PNG, JPG, WEBP, PDF, AI, CDR, EPS, PSD, atau ZIP/RAR.`
+      );
+    }
+    if (file.size > MAX_DESIGN_FILE_BYTES) {
+      throw new Error('Ukuran file melebihi batas maksimum 25 MB.');
+    }
+
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `orders/${orderId}/${Date.now()}_${sanitizedName}`;
 
