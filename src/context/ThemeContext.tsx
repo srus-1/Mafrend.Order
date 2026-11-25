@@ -45,7 +45,7 @@ function applySchemeToDom(pref: ThemePreference, resolved: ResolvedTheme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  const [preference, setPreferenceState] = useState<ThemePreference>('light');
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>('light');
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (!isMounted) return;
 
       const sys = getSystemScheme();
-      let stored: ThemePreference = 'system';
+      let stored: ResolvedTheme = 'light';
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw === 'light' || raw === 'dark') {
@@ -66,10 +66,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         // Ignore storage access errors
       }
 
-      const initialResolved: ResolvedTheme = stored === 'system' ? sys : stored;
       setSystemTheme(sys);
       setPreferenceState(stored);
-      applySchemeToDom(stored, initialResolved);
+      applySchemeToDom(stored, stored);
     }
 
     void hydrateTheme();
@@ -87,12 +86,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     const handleStorage = (e: StorageEvent) => {
       if (e.key !== STORAGE_KEY) return;
-      const nextPref: ThemePreference =
-        e.newValue === 'light' || e.newValue === 'dark' ? e.newValue : 'system';
-      const curSys = getSystemScheme();
-      const nextResolved = nextPref === 'system' ? curSys : nextPref;
+      const nextPref: ResolvedTheme = e.newValue === 'dark' ? 'dark' : 'light';
       setPreferenceState(nextPref);
-      applySchemeToDom(nextPref, nextResolved);
+      applySchemeToDom(nextPref, nextPref);
     };
 
     mql.addEventListener('change', handleMediaChange);
@@ -122,26 +118,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     applySchemeToDom(nextPref, nextResolved);
   }, []);
 
-  // Two-state toggle per modern-web-guidance dark-mode-toggle:
-  // Picks the opposite of the currently rendered scheme; clears storage when matching system default.
   const toggleTheme = useCallback(() => {
     const curSys = getSystemScheme();
     const currentRendered: ResolvedTheme =
       preference === 'system' ? curSys : preference;
     const target: ResolvedTheme = currentRendered === 'dark' ? 'light' : 'dark';
-    const nextPref: ThemePreference = target === curSys ? 'system' : target;
 
-    setPreferenceState(nextPref);
+    setPreferenceState(target);
     try {
-      if (nextPref === 'system') {
-        localStorage.removeItem(STORAGE_KEY);
-      } else {
-        localStorage.setItem(STORAGE_KEY, nextPref);
-      }
+      localStorage.setItem(STORAGE_KEY, target);
     } catch {
       // Ignore storage access errors
     }
-    applySchemeToDom(nextPref, target);
+    applySchemeToDom(target, target);
   }, [preference]);
 
   const value = useMemo<ThemeContextType>(

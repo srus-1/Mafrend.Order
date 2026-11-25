@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     'Manajemen Produksi Sablon & Merchandise Custom, Standar Katalog HPP, dan Analitik Keuangan Mafrend.Studio',
 };
 
-const themeInitScript = `try{var s=localStorage.getItem("color-scheme");var m=document.querySelector('meta[name="color-scheme"]');if(m)m.content=(s==="light"||s==="dark")?s:"light dark";var d=s==="dark"||(s!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.setAttribute("data-theme",d?"dark":"light");document.documentElement.classList.toggle("dark",d);}catch(e){}`;
+const themeInitScript = `try{var s=localStorage.getItem("color-scheme");var d=s==="dark";var m=document.querySelector('meta[name="color-scheme"]');if(m)m.content=d?"dark":"light";document.documentElement.setAttribute("data-theme",d?"dark":"light");document.documentElement.classList.toggle("dark",d);}catch(e){}`;
 
 export default function RootLayout({
   children,
@@ -38,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="id" className={inter.variable} suppressHydrationWarning>
       <head>
-        <meta name="color-scheme" content="light dark" />
+        <meta name="color-scheme" content="light" />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="antialiased bg-[var(--bg-canvas)] text-[var(--ink-primary)] min-h-screen flex font-sans">

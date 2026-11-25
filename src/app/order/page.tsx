@@ -26,7 +26,7 @@ export default function OrderPage() {
     clearSelectedOrders,
   } = useOrders();
 
-  const [sortOrder, setSortOrder] = React.useState<'QUEUE' | 'NEWEST' | 'OLDEST'>('QUEUE');
+  const [sortOrder, setSortOrder] = React.useState<'QUEUE' | 'NEWEST' | 'OLDEST'>('NEWEST');
 
   const sortedOrders = React.useMemo(() => {
     const filtered = orders.filter((order) => {
