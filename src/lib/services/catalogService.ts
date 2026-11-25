@@ -189,10 +189,34 @@ function buildCatalogDomainItem(
   };
 }
 
+const CATALOG_CACHE_TTL_MS = 30_000;
+let catalogCache: { items: CatalogItem[]; fetchedAt: number } | null = null;
+
+function setCatalogCache(items: CatalogItem[]): CatalogItem[] {
+  catalogCache = { items: [...items], fetchedAt: Date.now() };
+  return [...items];
+}
+
+function invalidateCatalogCache(): void {
+  catalogCache = null;
+}
+
 export const catalogService = {
-  async getCatalogItems(): Promise<CatalogItem[]> {
+  getCachedCatalogItems(): CatalogItem[] | null {
+    return catalogCache ? [...catalogCache.items] : null;
+  },
+
+  async getCatalogItems(options?: { force?: boolean }): Promise<CatalogItem[]> {
+    if (
+      !options?.force &&
+      catalogCache &&
+      Date.now() - catalogCache.fetchedAt < CATALOG_CACHE_TTL_MS
+    ) {
+      return [...catalogCache.items];
+    }
+
     if (!supabase) {
-      return readLocalCatalog();
+      return setCatalogCache(readLocalCatalog());
     }
 
     try {
@@ -203,16 +227,17 @@ export const catalogService = {
         .limit(500);
 
       if (error) {
-        return readLocalCatalog();
+        return setCatalogCache(readLocalCatalog());
       }
 
-      return (data as DbCatalogRow[]).map(mapDbCatalogToDomain);
+      return setCatalogCache((data as DbCatalogRow[]).map(mapDbCatalogToDomain));
     } catch {
-      return readLocalCatalog();
+      return setCatalogCache(readLocalCatalog());
     }
   },
 
   async createCatalogItem(input: CreateCatalogItemInput): Promise<CatalogItem> {
+    invalidateCatalogCache();
     const nowIso = new Date().toISOString();
     const localId = `cat-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const domainItem = buildCatalogDomainItem(localId, input, nowIso, nowIso);
@@ -263,6 +288,7 @@ export const catalogService = {
     id: string,
     updates: UpdateCatalogItemInput
   ): Promise<CatalogItem | null> {
+    invalidateCatalogCache();
     const nowIso = new Date().toISOString();
     const applyUpdates = (current: CatalogItem): CatalogItem => {
       const merged: CreateCatalogItemInput = {
@@ -353,6 +379,7 @@ export const catalogService = {
   },
 
   async deleteCatalogItem(id: string): Promise<boolean> {
+    invalidateCatalogCache();
     if (!supabase) {
       const list = readLocalCatalog().filter((c) => c.id !== id);
       writeLocalCatalog(list);

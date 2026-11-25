@@ -205,6 +205,7 @@ export default function Sidebar() {
                 <div key={item.href} className="relative group">
                   <Link
                     href={item.href}
+                    prefetch={true}
                     className={`rounded-xl flex items-center text-[13px] font-semibold transition-colors min-h-[42px] ${
                       isCollapsed ? 'justify-center px-2' : 'px-3.5 gap-3'
                     } ${
@@ -387,6 +388,7 @@ export default function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={true}
                   onClick={closeMobile}
                   className={`px-3.5 min-h-[44px] rounded-xl flex items-center gap-3 text-sm font-semibold transition-colors ${
                     isActive

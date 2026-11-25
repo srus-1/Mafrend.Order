@@ -32,8 +32,12 @@ function getMarginBadgeStyle(marginPct: number): string {
 }
 
 export default function CatalogPage() {
-  const [items, setItems] = useState<CatalogItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [items, setItems] = useState<CatalogItem[]>(
+    () => catalogService.getCachedCatalogItems() ?? []
+  );
+  const [loading, setLoading] = useState<boolean>(
+    () => catalogService.getCachedCatalogItems() === null
+  );
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
@@ -49,10 +53,10 @@ export default function CatalogPage() {
   useEffect(() => {
     let isMounted = true;
 
-    async function loadCatalog() {
+    async function loadCatalog(force = false) {
       await Promise.resolve();
       if (!isMounted) return;
-      const data = await catalogService.getCatalogItems();
+      const data = await catalogService.getCatalogItems({ force });
       if (isMounted) {
         setItems(data);
         setLoading(false);
@@ -62,7 +66,7 @@ export default function CatalogPage() {
     void loadCatalog();
 
     const handleSync = () => {
-      void loadCatalog();
+      void loadCatalog(true);
     };
     window.addEventListener('mafrend:catalog-updated', handleSync);
 

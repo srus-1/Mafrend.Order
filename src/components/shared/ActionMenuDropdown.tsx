@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
 
 export interface ActionMenuItem {
   label: string;
@@ -28,13 +27,6 @@ export default function ActionMenuDropdown({
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const pathname = usePathname();
-  const [prevPathname, setPrevPathname] = useState(pathname);
-
-  if (prevPathname !== pathname) {
-    setPrevPathname(pathname);
-    if (open) setOpen(false);
-  }
 
   useEffect(() => {
     if (!open) return;

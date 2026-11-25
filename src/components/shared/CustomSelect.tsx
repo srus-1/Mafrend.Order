@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useId } from 'react';
-import { usePathname } from 'next/navigation';
 import { ChevronDown, Check } from 'lucide-react';
 
 export interface CustomSelectOption {
@@ -46,15 +45,8 @@ export default function CustomSelect({
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const pathname = usePathname();
-  const [prevPathname, setPrevPathname] = useState(pathname);
   const autoId = useId();
   const listboxId = `${id || autoId}-listbox`;
-
-  if (prevPathname !== pathname) {
-    setPrevPathname(pathname);
-    if (open) setOpen(false);
-  }
 
   useEffect(() => {
     if (!open) return;

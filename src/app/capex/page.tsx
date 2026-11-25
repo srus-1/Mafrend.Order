@@ -30,9 +30,17 @@ export default function CapexPage() {
     availableMonths = [],
   } = useOrders();
 
-  const [capexList, setCapexList] = useState<CapexEntry[]>([]);
-  const [rawMaterialsList, setRawMaterialsList] = useState<RawMaterialEntry[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [capexList, setCapexList] = useState<CapexEntry[]>(
+    () => capexService.getCachedCapexEntries() ?? []
+  );
+  const [rawMaterialsList, setRawMaterialsList] = useState<RawMaterialEntry[]>(
+    () => rawMaterialService.getCachedRawMaterialEntries() ?? []
+  );
+  const [loading, setLoading] = useState<boolean>(
+    () =>
+      capexService.getCachedCapexEntries() === null ||
+      rawMaterialService.getCachedRawMaterialEntries() === null
+  );
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'ALL' | 'CAPEX' | 'RAW_MATERIAL'>('ALL');
 

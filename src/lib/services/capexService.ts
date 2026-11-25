@@ -185,10 +185,36 @@ let inMemoryRawMaterialEntries: RawMaterialEntry[] = [
   },
 ];
 
+const CAPEX_CACHE_TTL_MS = 30_000;
+let capexCache: { items: CapexEntry[]; fetchedAt: number } | null = null;
+let rawMaterialCache: { items: RawMaterialEntry[]; fetchedAt: number } | null = null;
+
+function setCapexCache(items: CapexEntry[]): CapexEntry[] {
+  capexCache = { items: [...items], fetchedAt: Date.now() };
+  return [...items];
+}
+
+function setRawMaterialCache(items: RawMaterialEntry[]): RawMaterialEntry[] {
+  rawMaterialCache = { items: [...items], fetchedAt: Date.now() };
+  return [...items];
+}
+
 export const capexService = {
-  async getCapexEntries(): Promise<CapexEntry[]> {
+  getCachedCapexEntries(): CapexEntry[] | null {
+    return capexCache ? [...capexCache.items] : null;
+  },
+
+  async getCapexEntries(options?: { force?: boolean }): Promise<CapexEntry[]> {
+    if (
+      !options?.force &&
+      capexCache &&
+      Date.now() - capexCache.fetchedAt < CAPEX_CACHE_TTL_MS
+    ) {
+      return [...capexCache.items];
+    }
+
     if (!supabase) {
-      return [...inMemoryCapexEntries];
+      return setCapexCache([...inMemoryCapexEntries]);
     }
 
     try {
@@ -201,17 +227,18 @@ export const capexService = {
 
       if (error) {
         console.warn('Supabase capex_entries fallback to in-memory:', error.message || error);
-        return [...inMemoryCapexEntries];
+        return setCapexCache([...inMemoryCapexEntries]);
       }
 
-      return (data as DbCapexRow[]).map(mapDbCapexToDomain);
+      return setCapexCache((data as DbCapexRow[]).map(mapDbCapexToDomain));
     } catch (err) {
       console.warn('Unexpected error fetching capex entries (using in-memory fallback):', err);
-      return [...inMemoryCapexEntries];
+      return setCapexCache([...inMemoryCapexEntries]);
     }
   },
 
   async createCapexEntry(input: CreateCapexInput): Promise<CapexEntry> {
+    capexCache = null;
     const nowIso = new Date().toISOString();
     const safeAmount = Math.max(0, Number(input.amount) || 0);
 
@@ -271,6 +298,7 @@ export const capexService = {
     id: string,
     updates: Partial<CreateCapexInput>
   ): Promise<CapexEntry | null> {
+    capexCache = null;
     const nowIso = new Date().toISOString();
 
     const applyInMemory = (): CapexEntry | null => {
@@ -328,6 +356,7 @@ export const capexService = {
   },
 
   async deleteCapexEntry(id: string): Promise<boolean> {
+    capexCache = null;
     if (!supabase) {
       inMemoryCapexEntries = inMemoryCapexEntries.filter((e) => e.id !== id);
       return true;
@@ -351,9 +380,21 @@ export const capexService = {
 };
 
 export const rawMaterialService = {
-  async getRawMaterialEntries(): Promise<RawMaterialEntry[]> {
+  getCachedRawMaterialEntries(): RawMaterialEntry[] | null {
+    return rawMaterialCache ? [...rawMaterialCache.items] : null;
+  },
+
+  async getRawMaterialEntries(options?: { force?: boolean }): Promise<RawMaterialEntry[]> {
+    if (
+      !options?.force &&
+      rawMaterialCache &&
+      Date.now() - rawMaterialCache.fetchedAt < CAPEX_CACHE_TTL_MS
+    ) {
+      return [...rawMaterialCache.items];
+    }
+
     if (!supabase) {
-      return [...inMemoryRawMaterialEntries];
+      return setRawMaterialCache([...inMemoryRawMaterialEntries]);
     }
 
     try {
@@ -369,20 +410,21 @@ export const rawMaterialService = {
           'Supabase raw_material_entries fallback to in-memory:',
           error.message || error
         );
-        return [...inMemoryRawMaterialEntries];
+        return setRawMaterialCache([...inMemoryRawMaterialEntries]);
       }
 
-      return (data as DbRawMaterialRow[]).map(mapDbRawMaterialToDomain);
+      return setRawMaterialCache((data as DbRawMaterialRow[]).map(mapDbRawMaterialToDomain));
     } catch (err) {
       console.warn(
         'Unexpected error fetching raw material entries (using in-memory fallback):',
         err
       );
-      return [...inMemoryRawMaterialEntries];
+      return setRawMaterialCache([...inMemoryRawMaterialEntries]);
     }
   },
 
   async createRawMaterialEntry(input: CreateRawMaterialInput): Promise<RawMaterialEntry> {
+    rawMaterialCache = null;
     const nowIso = new Date().toISOString();
     const safeQty = Math.max(0.01, Number(input.quantity ?? input.qty) || 1);
     const safeUnitPrice = Math.max(0, Number(input.unitPrice) || 0);
@@ -449,6 +491,7 @@ export const rawMaterialService = {
     id: string,
     updates: Partial<CreateRawMaterialInput>
   ): Promise<RawMaterialEntry | null> {
+    rawMaterialCache = null;
     const nowIso = new Date().toISOString();
 
     const applyInMemory = (): RawMaterialEntry | null => {
@@ -547,6 +590,7 @@ export const rawMaterialService = {
   },
 
   async deleteRawMaterialEntry(id: string): Promise<boolean> {
+    rawMaterialCache = null;
     if (!supabase) {
       inMemoryRawMaterialEntries = inMemoryRawMaterialEntries.filter((e) => e.id !== id);
       return true;
