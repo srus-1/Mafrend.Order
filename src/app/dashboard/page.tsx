@@ -105,12 +105,11 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Asymmetric Bento Grid: 2x2 KPIs (5 cols) + Monthly Profit Chart (7 cols) */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
-        <div className="xl:col-span-5 flex">
+        <div className="xl:col-span-5 flex min-w-0">
           <MetricCards metrics={metrics} />
         </div>
-        <div className="xl:col-span-7 flex">
+        <div className="xl:col-span-7 flex min-w-0">
           <MonthlyProfitChart data={monthlyProfit} />
         </div>
       </div>

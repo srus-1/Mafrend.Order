@@ -421,7 +421,7 @@ export default function CapexPage() {
           <span className="text-[11px] sm:text-xs font-semibold text-white/90 truncate">
             Total Belanja
           </span>
-          <div className="text-base sm:text-2xl font-bold tracking-tight tabular-nums truncate">
+          <div className="text-[clamp(0.95rem,3.6vw,1.25rem)] sm:text-[clamp(1.1rem,1.5vw,1.4rem)] font-bold tracking-tight leading-tight tabular-nums break-words">
             {formatRp(totalSpending)}
           </div>
           <div>
@@ -435,7 +435,7 @@ export default function CapexPage() {
           <span className="text-[11px] sm:text-xs font-semibold text-[var(--ink-muted)] truncate">
             Belanja Modal (Capex)
           </span>
-          <div className="text-base sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)] tabular-nums truncate">
+          <div className="text-[clamp(0.95rem,3.6vw,1.25rem)] sm:text-[clamp(1.1rem,1.5vw,1.4rem)] font-bold tracking-tight leading-tight text-[var(--ink-primary)] tabular-nums break-words">
             {formatRp(totalCapexAmount)}
           </div>
           <div>
@@ -449,7 +449,7 @@ export default function CapexPage() {
           <span className="text-[11px] sm:text-xs font-semibold text-[var(--ink-muted)] truncate">
             Bahan Baku Berulang
           </span>
-          <div className="text-base sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)] tabular-nums truncate">
+          <div className="text-[clamp(0.95rem,3.6vw,1.25rem)] sm:text-[clamp(1.1rem,1.5vw,1.4rem)] font-bold tracking-tight leading-tight text-[var(--ink-primary)] tabular-nums break-words">
             {formatRp(totalMaterialsAmount)}
           </div>
           <div>
@@ -463,7 +463,7 @@ export default function CapexPage() {
           <span className="text-[11px] sm:text-xs font-semibold text-[var(--ink-muted)] truncate">
             Rata-rata Transaksi
           </span>
-          <div className="text-base sm:text-2xl font-bold tracking-tight text-[var(--ink-primary)] tabular-nums truncate">
+          <div className="text-[clamp(0.95rem,3.6vw,1.25rem)] sm:text-[clamp(1.1rem,1.5vw,1.4rem)] font-bold tracking-tight leading-tight text-[var(--ink-primary)] tabular-nums break-words">
             {formatRp(averageSpending)}
           </div>
           <div>

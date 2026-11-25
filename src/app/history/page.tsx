@@ -160,7 +160,7 @@ export default function HistoryPage() {
             Omzet Selesai
           </div>
           <div className="p-3 sm:p-5">
-            <div className="text-base sm:text-2xl font-bold text-[var(--ink-primary)] tabular-nums truncate">
+            <div className="text-[clamp(0.95rem,3.6vw,1.25rem)] sm:text-[clamp(1.1rem,1.5vw,1.4rem)] font-bold leading-tight text-[var(--ink-primary)] tabular-nums break-words">
               {formatRp(totalCompletedOmzet)}
             </div>
             <p className="text-[10px] sm:text-[11px] font-medium text-[var(--ink-muted)] mt-1 truncate">
@@ -174,7 +174,7 @@ export default function HistoryPage() {
             Laba Terealisasi
           </div>
           <div className="p-3 sm:p-5">
-            <div className="text-base sm:text-2xl font-bold text-[var(--ink-primary)] tabular-nums truncate">
+            <div className="text-[clamp(0.95rem,3.6vw,1.25rem)] sm:text-[clamp(1.1rem,1.5vw,1.4rem)] font-bold leading-tight text-[var(--ink-primary)] tabular-nums break-words">
               {formatRp(totalCompletedProfit)}
             </div>
             <p className="text-[10px] sm:text-[11px] font-semibold text-[var(--ink-profit)] mt-1 truncate">
