@@ -20,16 +20,31 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Order } from '@/types/order';
 import OrderRowCard from './OrderRowCard';
-import { useOrders } from '@/context/OrderContext';
+import { useOrderData, useOrderUI } from '@/context/OrderContext';
 import { Inbox, Plus } from 'lucide-react';
 
 interface SortableOrderItemProps {
   order: Order;
   index: number;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
+  onEdit: (order: Order) => void;
+  onDelete: (id: string) => Promise<boolean>;
+  onOpenDrawer: (order: Order) => void;
+  onUpdateOrder: (id: string, updates: Partial<Order>) => Promise<Order | null>;
 }
 
 const SortableOrderItem = React.memo(
-  function SortableOrderItem({ order, index }: SortableOrderItemProps) {
+  function SortableOrderItem({
+    order,
+    index,
+    isSelected,
+    onToggleSelect,
+    onEdit,
+    onDelete,
+    onOpenDrawer,
+    onUpdateOrder,
+  }: SortableOrderItemProps) {
     const {
       attributes,
       listeners,
@@ -51,20 +66,44 @@ const SortableOrderItem = React.memo(
           index={index}
           isDragging={isDragging}
           dragHandleProps={{ ...attributes, ...listeners }}
+          isSelected={isSelected}
+          onToggleSelect={onToggleSelect}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onOpenDrawer={onOpenDrawer}
+          onUpdateOrder={onUpdateOrder}
         />
       </div>
     );
   },
   (prevProps, nextProps) =>
-    prevProps.order === nextProps.order && prevProps.index === nextProps.index
+    prevProps.order === nextProps.order &&
+    prevProps.index === nextProps.index &&
+    prevProps.isSelected === nextProps.isSelected
 );
 
 interface OrderSortableListProps {
   orders: Order[];
+  trailingOrderIds?: string[];
 }
 
-export default function OrderSortableList({ orders }: OrderSortableListProps) {
-  const { reorderQueue, openCreateModal } = useOrders();
+export default function OrderSortableList({
+  orders,
+  trailingOrderIds = [],
+}: OrderSortableListProps) {
+  const { reorderQueue, deleteOrder, updateOrder } = useOrderData();
+  const {
+    openCreateModal,
+    openEditModal,
+    setActiveDrawerOrder,
+    selectedOrderIds = [],
+    toggleSelectOrder,
+  } = useOrderUI();
+
+  const selectedSet = React.useMemo(
+    () => new Set(selectedOrderIds),
+    [selectedOrderIds]
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -87,10 +126,10 @@ export default function OrderSortableList({ orders }: OrderSortableListProps) {
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const newItems = arrayMove(orders, oldIndex, newIndex);
-        reorderQueue(newItems.map((item) => item.id));
+        reorderQueue([...newItems.map((item) => item.id), ...trailingOrderIds]);
       }
     },
-    [orders, reorderQueue]
+    [orders, trailingOrderIds, reorderQueue]
   );
 
   const orderIds = React.useMemo(() => orders.map((o) => o.id), [orders]);
@@ -126,7 +165,17 @@ export default function OrderSortableList({ orders }: OrderSortableListProps) {
       <SortableContext items={orderIds} strategy={verticalListSortingStrategy}>
         <div className="flex flex-col gap-2.5">
           {orders.map((order, index) => (
-            <SortableOrderItem key={order.id} order={order} index={index} />
+            <SortableOrderItem
+              key={order.id}
+              order={order}
+              index={index}
+              isSelected={selectedSet.has(order.id)}
+              onToggleSelect={toggleSelectOrder}
+              onEdit={openEditModal}
+              onDelete={deleteOrder}
+              onOpenDrawer={setActiveDrawerOrder}
+              onUpdateOrder={updateOrder}
+            />
           ))}
         </div>
       </SortableContext>

@@ -50,9 +50,29 @@ export function getOrderMonth(
   return '';
 }
 
-export interface OrderContextType {
+export interface OrderDataContextType {
   orders: Order[];
   loading: boolean;
+  createOrder: (orderData: CreateOrderInput) => Promise<Order>;
+  updateOrder: (id: string, updates: Partial<Order>) => Promise<Order | null>;
+  deleteOrder: (id: string) => Promise<boolean>;
+  updateProcessStatus: (id: string, status: ProcessStatus) => Promise<void>;
+  updatePaymentStatus: (id: string, status: PaymentStatus) => Promise<void>;
+  reorderQueue: (orderedIds: string[]) => Promise<void>;
+  addDesignFile: (orderId: string, file: DesignFile) => Promise<DesignFile | null>;
+  uploadDesignFile: (orderId: string, file: File) => Promise<DesignFile | null>;
+  toggleDesignReady: (orderId: string, designId: string) => Promise<boolean>;
+  deleteDesignFile: (orderId: string, designId: string) => Promise<boolean>;
+  isConfigured: boolean;
+  configReason?: string;
+  error: string | null;
+  clearError: () => void;
+  selectedMonth: string;
+  setSelectedMonth: (month: string) => void;
+  availableMonths: string[];
+}
+
+export interface OrderUIContextType {
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   filterTab: FilterTab;
@@ -69,33 +89,22 @@ export interface OrderContextType {
   setActiveDrawerOrder: (order: Order | null) => void;
   lightboxFile: DesignFile | null;
   setLightboxFile: (file: DesignFile | null) => void;
-  createOrder: (orderData: CreateOrderInput) => Promise<Order>;
-  updateOrder: (id: string, updates: Partial<Order>) => Promise<Order | null>;
-  deleteOrder: (id: string) => Promise<boolean>;
-  updateProcessStatus: (id: string, status: ProcessStatus) => Promise<void>;
-  updatePaymentStatus: (id: string, status: PaymentStatus) => Promise<void>;
-  reorderQueue: (orderedIds: string[]) => Promise<void>;
-  addDesignFile: (orderId: string, file: DesignFile) => Promise<DesignFile | null>;
-  uploadDesignFile: (orderId: string, file: File) => Promise<DesignFile | null>;
-  toggleDesignReady: (orderId: string, designId: string) => Promise<boolean>;
-  deleteDesignFile: (orderId: string, designId: string) => Promise<boolean>;
-  metrics: DashboardMetrics;
-  monthlyProfit: MonthlyProfitData[];
-  buyerSummaries: BuyerSummary[];
-  isConfigured: boolean;
-  configReason?: string;
-  error: string | null;
-  clearError: () => void;
-  selectedMonth: string;
-  setSelectedMonth: (month: string) => void;
-  availableMonths: string[];
   selectedOrderIds: string[];
   toggleSelectOrder: (orderId: string) => void;
   selectAllOrders: (orderIds: string[]) => void;
   clearSelectedOrders: () => void;
 }
 
-const OrderContext = createContext<OrderContextType | undefined>(undefined);
+export interface DashboardAnalytics {
+  metrics: DashboardMetrics;
+  monthlyProfit: MonthlyProfitData[];
+  buyerSummaries: BuyerSummary[];
+}
+
+export type OrderContextType = OrderDataContextType & OrderUIContextType & DashboardAnalytics;
+
+const OrderDataContext = createContext<OrderDataContextType | undefined>(undefined);
+const OrderUIContext = createContext<OrderUIContextType | undefined>(undefined);
 
 export function OrderProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -698,6 +707,121 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
   const selectedMonth = selectedMonthState || defaultMonth;
 
+  const dataContextValue = useMemo<OrderDataContextType>(
+    () => ({
+      orders,
+      loading,
+      createOrder: handleCreateOrder,
+      updateOrder: handleUpdateOrder,
+      deleteOrder: handleDeleteOrder,
+      updateProcessStatus: handleUpdateProcessStatus,
+      updatePaymentStatus: handleUpdatePaymentStatus,
+      reorderQueue: handleReorderQueue,
+      addDesignFile: handleAddDesignFile,
+      uploadDesignFile: handleUploadDesignFile,
+      toggleDesignReady: handleToggleDesignReady,
+      deleteDesignFile: handleDeleteDesignFile,
+      isConfigured: configStatus.isConfigured,
+      configReason: configStatus.reason,
+      error,
+      clearError,
+      selectedMonth,
+      setSelectedMonth,
+      availableMonths,
+    }),
+    [
+      orders,
+      loading,
+      handleCreateOrder,
+      handleUpdateOrder,
+      handleDeleteOrder,
+      handleUpdateProcessStatus,
+      handleUpdatePaymentStatus,
+      handleReorderQueue,
+      handleAddDesignFile,
+      handleUploadDesignFile,
+      handleToggleDesignReady,
+      handleDeleteDesignFile,
+      configStatus.isConfigured,
+      configStatus.reason,
+      error,
+      clearError,
+      selectedMonth,
+      setSelectedMonth,
+      availableMonths,
+    ]
+  );
+
+  const uiContextValue = useMemo<OrderUIContextType>(
+    () => ({
+      searchQuery,
+      setSearchQuery,
+      filterTab,
+      setFilterTab,
+      dateFilter,
+      setDateFilter,
+      isFormModalOpen,
+      setIsFormModalOpen,
+      editingOrder,
+      setEditingOrder,
+      openCreateModal,
+      openEditModal,
+      activeDrawerOrder,
+      setActiveDrawerOrder,
+      lightboxFile,
+      setLightboxFile,
+      selectedOrderIds,
+      toggleSelectOrder,
+      selectAllOrders,
+      clearSelectedOrders,
+    }),
+    [
+      searchQuery,
+      filterTab,
+      dateFilter,
+      isFormModalOpen,
+      editingOrder,
+      openCreateModal,
+      openEditModal,
+      activeDrawerOrder,
+      setActiveDrawerOrder,
+      lightboxFile,
+      selectedOrderIds,
+      toggleSelectOrder,
+      selectAllOrders,
+      clearSelectedOrders,
+    ]
+  );
+
+  return (
+    <OrderDataContext.Provider value={dataContextValue}>
+      <OrderUIContext.Provider value={uiContextValue}>
+        {children}
+      </OrderUIContext.Provider>
+    </OrderDataContext.Provider>
+  );
+}
+
+export function useOrderData(): OrderDataContextType {
+  const context = useContext(OrderDataContext);
+  if (!context) {
+    throw new Error('useOrderData must be used within an OrderProvider');
+  }
+  return context;
+}
+
+export function useOrderUI(): OrderUIContextType {
+  const context = useContext(OrderUIContext);
+  if (!context) {
+    throw new Error('useOrderUI must be used within an OrderProvider');
+  }
+  return context;
+}
+
+export function useDashboardAnalytics(): DashboardAnalytics {
+  const { orders, selectedMonth } = useOrderData();
+  const { selectedOrderIds } = useOrderUI();
+
   const activeOrdersForDashboard = useMemo(() => {
     if (selectedOrderIds.length > 0) {
       const selectedSet = new Set(selectedOrderIds);
@@ -719,102 +843,15 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     [activeOrdersForDashboard]
   );
 
-  const contextValue = useMemo<OrderContextType>(
-    () => ({
-      orders,
-      loading,
-      searchQuery,
-      setSearchQuery,
-      filterTab,
-      setFilterTab,
-      dateFilter,
-      setDateFilter,
-      isFormModalOpen,
-      setIsFormModalOpen,
-      editingOrder,
-      setEditingOrder,
-      openCreateModal,
-      openEditModal,
-      activeDrawerOrder,
-      setActiveDrawerOrder,
-      lightboxFile,
-      setLightboxFile,
-      createOrder: handleCreateOrder,
-      updateOrder: handleUpdateOrder,
-      deleteOrder: handleDeleteOrder,
-      updateProcessStatus: handleUpdateProcessStatus,
-      updatePaymentStatus: handleUpdatePaymentStatus,
-      reorderQueue: handleReorderQueue,
-      addDesignFile: handleAddDesignFile,
-      uploadDesignFile: handleUploadDesignFile,
-      toggleDesignReady: handleToggleDesignReady,
-      deleteDesignFile: handleDeleteDesignFile,
-      metrics,
-      monthlyProfit,
-      buyerSummaries,
-      isConfigured: configStatus.isConfigured,
-      configReason: configStatus.reason,
-      error,
-      clearError,
-      selectedMonth,
-      setSelectedMonth,
-      availableMonths,
-      selectedOrderIds,
-      toggleSelectOrder,
-      selectAllOrders,
-      clearSelectedOrders,
-    }),
-    [
-      orders,
-      loading,
-      searchQuery,
-      filterTab,
-      dateFilter,
-      isFormModalOpen,
-      editingOrder,
-      openCreateModal,
-      openEditModal,
-      activeDrawerOrder,
-      setActiveDrawerOrder,
-      lightboxFile,
-      handleCreateOrder,
-      handleUpdateOrder,
-      handleDeleteOrder,
-      handleUpdateProcessStatus,
-      handleUpdatePaymentStatus,
-      handleReorderQueue,
-      handleAddDesignFile,
-      handleUploadDesignFile,
-      handleToggleDesignReady,
-      handleDeleteDesignFile,
-      metrics,
-      monthlyProfit,
-      buyerSummaries,
-      configStatus.isConfigured,
-      configStatus.reason,
-      error,
-      clearError,
-      selectedMonth,
-      setSelectedMonth,
-      availableMonths,
-      selectedOrderIds,
-      toggleSelectOrder,
-      selectAllOrders,
-      clearSelectedOrders,
-    ]
-  );
-
-  return (
-    <OrderContext.Provider value={contextValue}>
-      {children}
-    </OrderContext.Provider>
+  return useMemo(
+    () => ({ metrics, monthlyProfit, buyerSummaries }),
+    [metrics, monthlyProfit, buyerSummaries]
   );
 }
 
 export function useOrders(): OrderContextType {
-  const context = useContext(OrderContext);
-  if (!context) {
-    throw new Error('useOrders must be used within an OrderProvider');
-  }
-  return context;
+  const data = useOrderData();
+  const ui = useOrderUI();
+  const analytics = useDashboardAnalytics();
+  return useMemo(() => ({ ...data, ...ui, ...analytics }), [data, ui, analytics]);
 }

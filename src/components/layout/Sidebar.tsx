@@ -18,7 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { useSidebar } from '@/context/SidebarContext';
-import { useOrders } from '@/context/OrderContext';
+import { useOrderData } from '@/context/OrderContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useCalculator } from '@/context/CalculatorContext';
 import {
@@ -65,7 +65,7 @@ const navItems: NavItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { orders } = useOrders();
+  const { orders } = useOrderData();
   const {
     width,
     isCollapsed,
@@ -157,17 +157,18 @@ export default function Sidebar() {
   };
 
   const desktopWidth = isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : width;
+  const sidebarMotionClass =
+    isDragging && !isSnapping
+      ? 'transition-none'
+      : 'transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]';
+  const sidebarWillChangeClass = isDragging || isSnapping ? 'will-change-[width]' : '';
 
   return (
     <>
       {/* 1. DESKTOP SIDEBAR (Zero-Border Tonal Surface) */}
       <aside
         style={{ width: desktopWidth }}
-        className={`hidden md:flex flex-col justify-between shrink-0 sticky top-0 h-dvh self-start bg-[var(--bg-surface)] text-[var(--ink-primary)] shadow-[var(--shadow-card)] z-20 select-none ${
-          isDragging && !isSnapping
-            ? 'transition-none will-change-[width]'
-            : 'transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width]'
-        }`}
+        className={`hidden md:flex flex-col justify-between shrink-0 sticky top-0 h-dvh self-start bg-[var(--bg-surface)] text-[var(--ink-primary)] shadow-[var(--shadow-card)] z-20 select-none ${sidebarMotionClass} ${sidebarWillChangeClass}`}
       >
         <div className={isCollapsed ? 'flex-1 min-h-0' : 'flex-1 min-h-0 overflow-y-auto'}>
           {/* Brand Header (Zero Sub-Headline, Crisp Uncropped Logo) */}
@@ -237,7 +238,6 @@ export default function Sidebar() {
                 <div key={item.href} className="relative group">
                   <Link
                     href={item.href}
-                    prefetch={true}
                     className={`rounded-xl flex items-center text-[13px] font-semibold transition-colors min-h-[42px] ${
                       isCollapsed ? 'justify-center px-2' : 'px-3.5 gap-3'
                     } ${
@@ -423,7 +423,6 @@ export default function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  prefetch={true}
                   onClick={closeMobile}
                   className={`px-3.5 min-h-[44px] rounded-xl flex items-center gap-3 text-sm font-semibold transition-colors ${
                     isActive

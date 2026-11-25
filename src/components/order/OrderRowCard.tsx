@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { Order, PaymentStatus, ProcessStatus } from '@/types/order';
 import { formatRp, formatDateShort, buildWhatsAppUrl } from '@/lib/utils';
-import { useOrders } from '@/context/OrderContext';
 import ActionMenuDropdown from '@/components/shared/ActionMenuDropdown';
 import CustomSelect, { CustomSelectOption } from '@/components/shared/CustomSelect';
 
@@ -51,6 +50,10 @@ interface OrderRowCardProps {
   dragHandleProps?: Record<string, unknown>;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
+  onEdit?: (order: Order) => void;
+  onDelete?: (id: string) => Promise<boolean>;
+  onOpenDrawer?: (order: Order) => void;
+  onUpdateOrder?: (id: string, updates: Partial<Order>) => Promise<Order | null>;
 }
 
 function getInitials(name: string): string {
@@ -80,40 +83,26 @@ function OrderRowCardComponent({
   index,
   isDragging = false,
   dragHandleProps,
-  isSelected: propIsSelected,
+  isSelected = false,
   onToggleSelect,
+  onEdit,
+  onDelete,
+  onOpenDrawer,
+  onUpdateOrder,
 }: OrderRowCardProps) {
-  const {
-    openEditModal,
-    deleteOrder,
-    setActiveDrawerOrder,
-    updateOrder,
-    selectedOrderIds = [],
-    toggleSelectOrder,
-  } = useOrders();
-
   const [isExpanded, setIsExpanded] = useState(false);
-
-  const isSelected =
-    propIsSelected !== undefined
-      ? propIsSelected
-      : selectedOrderIds.includes(order.id);
 
   const handleToggleSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
-    if (onToggleSelect) {
-      onToggleSelect(order.id);
-    } else if (toggleSelectOrder) {
-      toggleSelectOrder(order.id);
-    }
+    onToggleSelect?.(order.id);
   };
 
   const handlePaymentChange = (nextValue: string) => {
-    updateOrder(order.id, { paymentStatus: nextValue as PaymentStatus });
+    void onUpdateOrder?.(order.id, { paymentStatus: nextValue as PaymentStatus });
   };
 
   const handleProcessChange = (nextValue: string) => {
-    updateOrder(order.id, { processStatus: nextValue as ProcessStatus });
+    void onUpdateOrder?.(order.id, { processStatus: nextValue as ProcessStatus });
   };
 
   const waUrl = buildWhatsAppUrl(
@@ -126,17 +115,17 @@ function OrderRowCardComponent({
   const isNegativeMargin = order.marginPct < 0;
 
   const actionMenuItems = [
-    { label: 'Edit', onClick: () => openEditModal(order) },
+    { label: 'Edit', onClick: () => onEdit?.(order) },
     {
       label: `Lihat berkas (${totalFilesCount})`,
-      onClick: () => setActiveDrawerOrder(order),
+      onClick: () => onOpenDrawer?.(order),
     },
     {
       label: 'Hapus',
       tone: 'danger' as const,
       onClick: () => {
         if (confirm(`Hapus pesanan ${order.orderNumber}?`)) {
-          deleteOrder(order.id);
+          void onDelete?.(order.id);
         }
       },
     },
@@ -342,7 +331,7 @@ function OrderRowCardComponent({
                   <span>•</span>
                   <button
                     type="button"
-                    onClick={() => setActiveDrawerOrder(order)}
+                    onClick={() => onOpenDrawer?.(order)}
                     className="font-semibold text-[var(--ink-primary)] underline"
                   >
                     Berkas ({readyFilesCount}/{totalFilesCount} siap)

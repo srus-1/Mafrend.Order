@@ -63,7 +63,9 @@ export default function CatalogPage() {
       }
     }
 
-    void loadCatalog();
+    if (!catalogService.isCacheFresh()) {
+      void loadCatalog();
+    }
 
     const handleSync = () => {
       void loadCatalog(true);

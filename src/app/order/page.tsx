@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useOrders } from '@/context/OrderContext';
+import { useOrderData, useOrderUI } from '@/context/OrderContext';
 import OrderFilterTabs from '@/components/order/OrderFilterTabs';
 import OrderSortableList from '@/components/order/OrderSortableList';
 import { ArrowUpDown, Plus } from 'lucide-react';
@@ -10,23 +10,38 @@ import {
   downloadCSVFile,
   exportOrdersToPDF,
 } from '@/lib/csvExport';
-import { downloadOrdersExcelXlsx } from '@/lib/excelExport';
 import ExportMenuButton from '@/components/shared/ExportMenuButton';
 
+const ORDERS_PAGE_SIZE = 25;
+
+type OrderSortMode = 'QUEUE' | 'NEWEST' | 'OLDEST';
+
+const SORT_LABELS: Record<OrderSortMode, string> = {
+  QUEUE: 'Prioritas',
+  NEWEST: 'Terbaru',
+  OLDEST: 'Terlama',
+};
+
+const NEXT_SORT_MODE: Record<OrderSortMode, OrderSortMode> = {
+  QUEUE: 'NEWEST',
+  NEWEST: 'OLDEST',
+  OLDEST: 'QUEUE',
+};
+
 export default function OrderPage() {
+  const { orders, loading } = useOrderData();
   const {
-    orders,
     searchQuery,
     filterTab,
     dateFilter,
     openCreateModal,
-    loading,
     selectedOrderIds = [],
     selectAllOrders,
     clearSelectedOrders,
-  } = useOrders();
+  } = useOrderUI();
 
-  const [sortOrder, setSortOrder] = React.useState<'QUEUE' | 'NEWEST' | 'OLDEST'>('NEWEST');
+  const [sortOrder, setSortOrder] = React.useState<OrderSortMode>('NEWEST');
+  const [visibleLimit, setVisibleLimit] = React.useState<number>(ORDERS_PAGE_SIZE);
 
   const sortedOrders = React.useMemo(() => {
     const filtered = orders.filter((order) => {
@@ -68,26 +83,43 @@ export default function OrderPage() {
       return [...filtered].sort((a, b) => (a.queueOrder || 0) - (b.queueOrder || 0));
     }
 
+    const direction = sortOrder === 'NEWEST' ? -1 : 1;
     return [...filtered].sort((a, b) => {
-      const timeA = new Date(a.createdAt || a.orderDate).getTime() || 0;
-      const timeB = new Date(b.createdAt || b.orderDate).getTime() || 0;
-      if (timeA !== timeB) {
-        return sortOrder === 'NEWEST' ? timeB - timeA : timeA - timeB;
+      const keyA = a.createdAt || a.orderDate || '';
+      const keyB = b.createdAt || b.orderDate || '';
+      if (keyA !== keyB) {
+        return keyA < keyB ? -direction : direction;
       }
-      return sortOrder === 'NEWEST'
-        ? b.orderNumber.localeCompare(a.orderNumber)
-        : a.orderNumber.localeCompare(b.orderNumber);
+      return a.orderNumber.localeCompare(b.orderNumber) * direction;
     });
   }, [orders, searchQuery, filterTab, dateFilter, sortOrder]);
+
+  const displayedOrders = React.useMemo(
+    () => sortedOrders.slice(0, visibleLimit),
+    [sortedOrders, visibleLimit]
+  );
+
+  const trailingOrderIds = React.useMemo(
+    () =>
+      sortedOrders.length > visibleLimit
+        ? sortedOrders.slice(visibleLimit).map((o) => o.id)
+        : [],
+    [sortedOrders, visibleLimit]
+  );
 
   const visibleOrderIds = React.useMemo(
     () => sortedOrders.map((o) => o.id),
     [sortedOrders]
   );
 
+  const selectedOrderSet = React.useMemo(
+    () => new Set(selectedOrderIds),
+    [selectedOrderIds]
+  );
+
   const selectedInViewCount = React.useMemo(
-    () => visibleOrderIds.filter((id) => selectedOrderIds.includes(id)).length,
-    [visibleOrderIds, selectedOrderIds]
+    () => visibleOrderIds.filter((id) => selectedOrderSet.has(id)).length,
+    [visibleOrderIds, selectedOrderSet]
   );
 
   const isAllSelected =
@@ -128,14 +160,15 @@ export default function OrderPage() {
     downloadCSVFile(`mafrend-studio-orders-ml-${suffix}.csv`, csvContent);
   };
 
-  const handleDownloadOrdersExcel = () => {
+  const handleDownloadOrdersExcel = async () => {
     const targetOrders = getTargetOrdersForExport();
     const label =
       selectedOrderIds.length > 0
         ? `${selectedOrderIds.length} Pesanan Terpilih`
         : `Antrean Pesanan (${filterTab})`;
     const suffix = selectedOrderIds.length > 0 ? 'selected' : 'laporan';
-    void downloadOrdersExcelXlsx(
+    const { downloadOrdersExcelXlsx } = await import('@/lib/excelExport');
+    await downloadOrdersExcelXlsx(
       targetOrders,
       label,
       `mafrend-studio-pesanan-${suffix}.xlsx`
@@ -161,35 +194,13 @@ export default function OrderPage() {
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             type="button"
-            onClick={() =>
-              setSortOrder((prev) =>
-                prev === 'QUEUE' ? 'NEWEST' : prev === 'NEWEST' ? 'OLDEST' : 'QUEUE'
-              )
-            }
-            aria-label={`Urutkan: ${
-              sortOrder === 'QUEUE'
-                ? 'Prioritas'
-                : sortOrder === 'NEWEST'
-                ? 'Terbaru'
-                : 'Terlama'
-            }`}
-            title={
-              sortOrder === 'QUEUE'
-                ? 'Urutan Prioritas'
-                : sortOrder === 'NEWEST'
-                ? 'Urutan Terbaru'
-                : 'Urutan Terlama'
-            }
+            onClick={() => setSortOrder((prev) => NEXT_SORT_MODE[prev])}
+            aria-label={`Urutkan: ${SORT_LABELS[sortOrder]}`}
+            title={`Urutan ${SORT_LABELS[sortOrder]}`}
             className="inline-flex items-center justify-center gap-1.5 w-[38px] sm:w-auto px-0 sm:px-3.5 py-2 rounded-xl bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] shadow-[var(--shadow-card)] text-xs font-semibold text-[var(--ink-primary)] transition-all active:scale-[0.97] min-h-[38px]"
           >
             <ArrowUpDown className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-[var(--ink-primary)] sm:text-[var(--ink-muted)]" />
-            <span className="hidden sm:inline">
-              {sortOrder === 'QUEUE'
-                ? 'Prioritas'
-                : sortOrder === 'NEWEST'
-                ? 'Terbaru'
-                : 'Terlama'}
-            </span>
+            <span className="hidden sm:inline">{SORT_LABELS[sortOrder]}</span>
           </button>
 
           <ExportMenuButton
@@ -280,7 +291,30 @@ export default function OrderPage() {
             ))}
           </div>
         ) : (
-          <OrderSortableList orders={sortedOrders} />
+          <>
+            <OrderSortableList
+              orders={displayedOrders}
+              trailingOrderIds={trailingOrderIds}
+            />
+            {sortedOrders.length > visibleLimit && (
+              <div className="pt-1 flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibleLimit((prev) => prev + ORDERS_PAGE_SIZE)}
+                  className="px-4 py-2 rounded-xl bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] text-xs font-semibold text-[var(--ink-primary)] transition-colors min-h-[38px]"
+                >
+                  Tampilkan {Math.min(ORDERS_PAGE_SIZE, sortedOrders.length - visibleLimit)} lagi ({displayedOrders.length} dari {sortedOrders.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibleLimit(sortedOrders.length)}
+                  className="px-3.5 py-2 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)] text-xs font-semibold text-[var(--ink-secondary)] transition-colors min-h-[38px]"
+                >
+                  Tampilkan semua
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

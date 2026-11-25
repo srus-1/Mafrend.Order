@@ -206,6 +206,12 @@ export const catalogService = {
     return catalogCache ? [...catalogCache.items] : null;
   },
 
+  isCacheFresh(): boolean {
+    return Boolean(
+      catalogCache && Date.now() - catalogCache.fetchedAt < CATALOG_CACHE_TTL_MS
+    );
+  },
+
   async getCatalogItems(options?: { force?: boolean }): Promise<CatalogItem[]> {
     if (
       !options?.force &&

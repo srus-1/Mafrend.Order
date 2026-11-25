@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useOrders, getOrderMonth } from '@/context/OrderContext';
+import { useOrderData, useOrderUI, getOrderMonth } from '@/context/OrderContext';
 import { PaymentStatus } from '@/types/order';
 import {
   formatRp,
@@ -15,8 +15,9 @@ import {
   downloadCSVFile,
   exportOrdersToPDF,
 } from '@/lib/csvExport';
-import { downloadOrdersExcelXlsx } from '@/lib/excelExport';
 import ExportMenuButton from '@/components/shared/ExportMenuButton';
+
+const HISTORY_PAGE_SIZE = 25;
 import ActionMenuDropdown from '@/components/shared/ActionMenuDropdown';
 import CustomSelect from '@/components/shared/CustomSelect';
 import {
@@ -36,15 +37,15 @@ const PAYMENT_BADGE_CONFIG: Record<PaymentStatus, { label: string; className: st
 export default function HistoryPage() {
   const {
     orders,
-    openEditModal,
     deleteOrder,
-    setActiveDrawerOrder,
     selectedMonth,
     setSelectedMonth,
     availableMonths = [],
-  } = useOrders();
+  } = useOrderData();
+  const { openEditModal, setActiveDrawerOrder } = useOrderUI();
 
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [visibleLimit, setVisibleLimit] = useState<number>(HISTORY_PAGE_SIZE);
 
   const completedOrders = useMemo(
     () => orders.filter((o) => o.processStatus === 'SELESAI'),
@@ -143,10 +144,12 @@ export default function HistoryPage() {
             ariaLabel="Unduh CSV, Excel, atau PDF riwayat pesanan"
             variant="light-neutral"
             onExportExcel={() => {
-              void downloadOrdersExcelXlsx(
-                filteredHistory,
-                `Arsip Selesai (${formatMonthLabel(selectedMonth)})`,
-                `mafrend-studio-riwayat-${selectedMonth || 'all'}.xlsx`
+              void import('@/lib/excelExport').then(({ downloadOrdersExcelXlsx }) =>
+                downloadOrdersExcelXlsx(
+                  filteredHistory,
+                  `Arsip Selesai (${formatMonthLabel(selectedMonth)})`,
+                  `mafrend-studio-riwayat-${selectedMonth || 'all'}.xlsx`
+                )
               );
             }}
             onExportPDF={() => {
@@ -274,7 +277,7 @@ export default function HistoryPage() {
               <span className="col-span-2 text-right">Status & Aksi</span>
             </div>
 
-            {filteredHistory.map((order) => {
+            {filteredHistory.slice(0, visibleLimit).map((order) => {
               const waUrl = buildWhatsAppUrl(order.buyerPhone);
               const filesCount = order.designFiles?.length || 0;
               const paymentBadge =
@@ -390,6 +393,25 @@ export default function HistoryPage() {
                 </div>
               );
             })}
+
+            {filteredHistory.length > visibleLimit && (
+              <div className="pt-1 flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibleLimit((prev) => prev + HISTORY_PAGE_SIZE)}
+                  className="px-4 py-2 rounded-xl bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] text-xs font-semibold text-[var(--ink-primary)] transition-colors min-h-[38px]"
+                >
+                  Tampilkan {Math.min(HISTORY_PAGE_SIZE, filteredHistory.length - visibleLimit)} lagi ({Math.min(visibleLimit, filteredHistory.length)} dari {filteredHistory.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibleLimit(filteredHistory.length)}
+                  className="px-3.5 py-2 rounded-xl bg-[var(--bg-row)] hover:bg-[var(--bg-hover)] text-xs font-semibold text-[var(--ink-secondary)] transition-colors min-h-[38px]"
+                >
+                  Tampilkan semua
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

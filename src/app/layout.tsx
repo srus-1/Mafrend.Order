@@ -6,15 +6,12 @@ import Sidebar from '@/components/layout/Sidebar';
 import TopHeader from '@/components/layout/TopHeader';
 import SetupNoticeBanner from '@/components/shared/SetupNoticeBanner';
 import FloatingCalculator from '@/components/shared/FloatingCalculator';
-import StaffAuthModal from '@/components/auth/StaffAuthModal';
+import GlobalOverlays from '@/components/layout/GlobalOverlays';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { CalculatorProvider } from '@/context/CalculatorContext';
 import { OrderProvider } from '@/context/OrderContext';
 import { SidebarProvider } from '@/context/SidebarContext';
-import OrderFormModal from '@/components/order/OrderFormModal';
-import OrderDesignDrawer from '@/components/order/OrderDesignDrawer';
-import LightboxModal from '@/components/shared/LightboxModal';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -41,7 +38,10 @@ export default function RootLayout({
         <meta name="color-scheme" content="light" />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="antialiased bg-[var(--bg-canvas)] text-[var(--ink-primary)] min-h-screen flex font-sans">
+      <body
+        className="antialiased bg-[var(--bg-canvas)] text-[var(--ink-primary)] min-h-screen flex font-sans"
+        suppressHydrationWarning
+      >
         <ThemeProvider>
           <AuthProvider>
             <CalculatorProvider>
@@ -59,11 +59,8 @@ export default function RootLayout({
                       </main>
                     </div>
 
-                    <OrderFormModal />
-                    <OrderDesignDrawer />
-                    <LightboxModal />
                     <FloatingCalculator />
-                    <StaffAuthModal />
+                    <GlobalOverlays />
                   </SidebarProvider>
                 </Suspense>
               </OrderProvider>

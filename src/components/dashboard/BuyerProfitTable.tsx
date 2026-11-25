@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { BuyerSummary } from '@/types/order';
 import { formatRp, buildWhatsAppUrl } from '@/lib/utils';
 import { MessageCircle, Search, X } from 'lucide-react';
@@ -25,11 +25,16 @@ function getMarginBadgeClass(marginPct: number): string {
 export default function BuyerProfitTable({ buyers }: BuyerProfitTableProps) {
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  const filteredBuyers = buyers.filter(
-    (b) =>
-      b.buyerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.buyerPhone.includes(searchTerm)
-  );
+  const filteredBuyers = useMemo(() => {
+    const trimmed = searchTerm.trim();
+    if (!trimmed) return buyers;
+    const query = trimmed.toLowerCase();
+    return buyers.filter(
+      (buyer) =>
+        buyer.buyerName.toLowerCase().includes(query) ||
+        buyer.buyerPhone.includes(trimmed)
+    );
+  }, [buyers, searchTerm]);
 
   return (
     <div className="bg-[var(--bg-surface)] shadow-[var(--shadow-card)] rounded-2xl p-4 sm:p-5 flex flex-col gap-3.5">

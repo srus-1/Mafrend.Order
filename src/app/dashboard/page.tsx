@@ -1,7 +1,11 @@
 'use client';
 
 import React from 'react';
-import { useOrders } from '@/context/OrderContext';
+import {
+  useOrderData,
+  useOrderUI,
+  useDashboardAnalytics,
+} from '@/context/OrderContext';
 import MetricCards from '@/components/dashboard/MetricCards';
 import MonthlyProfitChart from '@/components/dashboard/MonthlyProfitChart';
 import BuyerProfitTable from '@/components/dashboard/BuyerProfitTable';
@@ -11,15 +15,12 @@ import CustomSelect from '@/components/shared/CustomSelect';
 
 export default function DashboardPage() {
   const {
-    metrics,
-    monthlyProfit,
-    buyerSummaries,
     selectedMonth,
     setSelectedMonth,
     availableMonths = [],
-    selectedOrderIds = [],
-    clearSelectedOrders,
-  } = useOrders();
+  } = useOrderData();
+  const { selectedOrderIds = [], clearSelectedOrders } = useOrderUI();
+  const { metrics, monthlyProfit, buyerSummaries } = useDashboardAnalytics();
 
   const totalCollected = Math.max(0, metrics.totalOmzet - metrics.totalPiutangDp);
   const collectionRate =

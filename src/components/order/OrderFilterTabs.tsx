@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { FilterTab } from '@/types/order';
-import { useOrders } from '@/context/OrderContext';
+import { useOrderData, useOrderUI } from '@/context/OrderContext';
 import { Search, Calendar, X } from 'lucide-react';
 
 interface TabItem {
@@ -12,6 +12,7 @@ interface TabItem {
 }
 
 export default function OrderFilterTabs() {
+  const { orders } = useOrderData();
   const {
     filterTab,
     setFilterTab,
@@ -19,17 +20,29 @@ export default function OrderFilterTabs() {
     setSearchQuery,
     dateFilter,
     setDateFilter,
-    orders,
-  } = useOrders();
+  } = useOrderUI();
 
-  const counts: Record<FilterTab, number> = {
-    ALL: orders.length,
-    BELUM_LUNAS_DP: orders.filter(
-      (o) => o.paymentStatus === 'BELUM_LUNAS' || o.paymentStatus === 'DP'
-    ).length,
-    PROSES: orders.filter((o) => o.processStatus !== 'SELESAI').length,
-    SELESAI: orders.filter((o) => o.processStatus === 'SELESAI').length,
-  };
+  const counts = useMemo<Record<FilterTab, number>>(() => {
+    let belumLunasDp = 0;
+    let proses = 0;
+    let selesai = 0;
+    for (const o of orders) {
+      if (o.paymentStatus === 'BELUM_LUNAS' || o.paymentStatus === 'DP') {
+        belumLunasDp += 1;
+      }
+      if (o.processStatus === 'SELESAI') {
+        selesai += 1;
+      } else {
+        proses += 1;
+      }
+    }
+    return {
+      ALL: orders.length,
+      BELUM_LUNAS_DP: belumLunasDp,
+      PROSES: proses,
+      SELESAI: selesai,
+    };
+  }, [orders]);
 
   const tabs: TabItem[] = [
     { id: 'ALL', label: 'Semua', count: counts.ALL },

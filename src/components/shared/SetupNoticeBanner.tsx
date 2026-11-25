@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { Copy, Check, AlertCircle, X, Lock, LogOut } from 'lucide-react';
-import { useOrders } from '@/context/OrderContext';
+import { useOrderData } from '@/context/OrderContext';
 import { useAuth } from '@/context/AuthContext';
 
 export default function SetupNoticeBanner() {
-  const { isConfigured, configReason, error, clearError } = useOrders();
+  const { isConfigured, configReason, error, clearError } = useOrderData();
   const { user, authRequired, openAuthModal, signOut } = useAuth();
   const [copied, setCopied] = React.useState(false);
 

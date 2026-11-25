@@ -204,6 +204,10 @@ export const capexService = {
     return capexCache ? [...capexCache.items] : null;
   },
 
+  isCacheFresh(): boolean {
+    return Boolean(capexCache && Date.now() - capexCache.fetchedAt < CAPEX_CACHE_TTL_MS);
+  },
+
   async getCapexEntries(options?: { force?: boolean }): Promise<CapexEntry[]> {
     if (
       !options?.force &&
@@ -382,6 +386,12 @@ export const capexService = {
 export const rawMaterialService = {
   getCachedRawMaterialEntries(): RawMaterialEntry[] | null {
     return rawMaterialCache ? [...rawMaterialCache.items] : null;
+  },
+
+  isCacheFresh(): boolean {
+    return Boolean(
+      rawMaterialCache && Date.now() - rawMaterialCache.fetchedAt < CAPEX_CACHE_TTL_MS
+    );
   },
 
   async getRawMaterialEntries(options?: { force?: boolean }): Promise<RawMaterialEntry[]> {

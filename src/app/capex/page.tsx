@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Plus,
   Calendar,
@@ -9,7 +10,7 @@ import {
   Check,
   AlertCircle,
 } from 'lucide-react';
-import { useOrders } from '@/context/OrderContext';
+import { useOrderData } from '@/context/OrderContext';
 import {
   CapexEntry,
   CreateCapexInput,
@@ -19,16 +20,23 @@ import {
 import { capexService, rawMaterialService } from '@/lib/supabase';
 import { formatRp, formatMonthLabel } from '@/lib/utils';
 import CustomSelect from '@/components/shared/CustomSelect';
-import CapexFormModal from '@/components/capex/CapexFormModal';
-import RawMaterialFormModal from '@/components/capex/RawMaterialFormModal';
 import CapexSpendingSections from '@/components/capex/CapexSpendingSections';
+
+const CapexFormModal = dynamic(
+  () => import('@/components/capex/CapexFormModal'),
+  { ssr: false }
+);
+const RawMaterialFormModal = dynamic(
+  () => import('@/components/capex/RawMaterialFormModal'),
+  { ssr: false }
+);
 
 export default function CapexPage() {
   const {
     selectedMonth,
     setSelectedMonth,
     availableMonths = [],
-  } = useOrders();
+  } = useOrderData();
 
   const [capexList, setCapexList] = useState<CapexEntry[]>(
     () => capexService.getCachedCapexEntries() ?? []
@@ -67,6 +75,9 @@ export default function CapexPage() {
   };
 
   useEffect(() => {
+    if (capexService.isCacheFresh() && rawMaterialService.isCacheFresh()) {
+      return;
+    }
     let isMounted = true;
     async function loadData() {
       await Promise.resolve();
